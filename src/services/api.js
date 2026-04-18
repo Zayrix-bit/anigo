@@ -613,3 +613,166 @@ export async function getMalSyncMapping(malId) {
     return null;
   }
 }
+
+// ==========================================
+// CHARACTER DETAIL (AniList)
+// ==========================================
+
+const CHARACTER_QUERY = `
+  query ($id: Int) {
+    Character(id: $id) {
+      id
+      name {
+        full
+        native
+        userPreferred
+      }
+      image {
+        large
+      }
+      description(asHtml: true)
+      gender
+      age
+      dateOfBirth {
+        year
+        month
+        day
+      }
+      bloodType
+      favourites
+      media(sort: START_DATE_DESC, type: ANIME, perPage: 25) {
+        edges {
+          characterRole
+          voiceActors(language: JAPANESE, sort: [RELEVANCE]) {
+            id
+            name {
+              full
+              native
+              userPreferred
+            }
+            image {
+              large
+            }
+          }
+          node {
+            id
+            title {
+              romaji
+              english
+            }
+            coverImage {
+              large
+            }
+            format
+            averageScore
+          }
+        }
+      }
+    }
+  }
+`;
+
+export async function getCharacterDetails(id) {
+  if (!id) return null;
+  try {
+    const { data } = await axios.post(ANILIST_URL, {
+      query: CHARACTER_QUERY,
+      variables: { id: parseInt(id) },
+    }, {
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (data.errors) {
+      console.error("AniList Character Errors [ID:", id, "]:", data.errors);
+      return null;
+    }
+
+    return data.data?.Character || null;
+  } catch (err) {
+    console.error("getCharacterDetails Error:", err);
+    return null;
+  }
+}
+
+const STAFF_QUERY = `
+  query ($id: Int) {
+    Staff(id: $id) {
+      id
+      name {
+        full
+        native
+        userPreferred
+      }
+      image {
+        large
+      }
+      description(asHtml: true)
+      languageV2
+      primaryOccupations
+      gender
+      dateOfBirth {
+        year
+        month
+        day
+      }
+      dateOfDeath {
+        year
+        month
+        day
+      }
+      age
+      homeTown
+      favourites
+      characterMedia(sort: START_DATE_DESC, perPage: 50) {
+        edges {
+          characterRole
+          node {
+            id
+            title {
+              romaji
+              english
+            }
+            coverImage {
+              large
+            }
+            format
+            type
+            averageScore
+          }
+          characters {
+            id
+            name {
+              full
+              userPreferred
+            }
+            image {
+              large
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
+export async function getStaffDetails(id) {
+  if (!id) return null;
+  try {
+    const { data } = await axios.post(ANILIST_URL, {
+      query: STAFF_QUERY,
+      variables: { id: parseInt(id) },
+    }, {
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (data.errors) {
+      console.error("AniList Staff Errors [ID:", id, "]:", data.errors);
+      return null;
+    }
+
+    return data.data?.Staff || null;
+  } catch (err) {
+    console.error("getStaffDetails Error:", err);
+    return null;
+  }
+}

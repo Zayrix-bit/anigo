@@ -1516,7 +1516,11 @@ export default function Watch() {
                 </header>
                 <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-4">
                   {anime.characters.edges.slice(0, 8).map(edge => (
-                    <div key={edge.node.id} className="group flex bg-[#0d0d0d] rounded-sm overflow-hidden border border-white/5 h-20 transition-all hover:bg-[#111] hover:border-red-600/30">
+                    <Link 
+                      key={edge.node.id} 
+                      to={`/character/${edge.node.id}`}
+                      className="group flex bg-[#0d0d0d] rounded-sm overflow-hidden border border-white/5 h-20 transition-all hover:bg-[#111] hover:border-red-600/30"
+                    >
                       <div className="relative w-12 sm:w-16 h-full overflow-hidden shrink-0">
                         <img src={edge.node.image?.large} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                         <div className="absolute inset-0 bg-red-600/10 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -1525,7 +1529,7 @@ export default function Watch() {
                         <span className="text-[11px] sm:text-[13px] font-bold text-white transition-colors group-hover:text-red-500 truncate">{edge.node.name?.userPreferred}</span>
                         <span className="text-[8px] sm:text-[9px] font-bold text-white/20 uppercase tracking-[0.2em] truncate">{edge.role}</span>
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               </div>
