@@ -183,29 +183,41 @@ class AnikaiScraper:
     BASE = ANIKAI_BASE
     AJAX = ANIKAI_AJAX
     ENC_DEC = "https://enc-dec.app/api"
+    TIMEOUT_EXTERNAL = 8  # Reduced timeout for external decryption bridge
 
     def _encrypt(self, text):
         try:
-            data = http.get_json(f"{self.ENC_DEC}/enc-kai", params={"text": text})
+            url = f"{self.ENC_DEC}/enc-kai"
+            log.info("Anikai: Encrypting via %s...", url)
+            data = http.get_json(url, params={"text": text}, timeout=self.TIMEOUT_EXTERNAL)
             return data.get("result") if data and data.get("status") == 200 else None
-        except Exception:
+        except Exception as e:
+            log.warning("Anikai: Encryption failed (check network/ISP): %s", e)
             return None
 
     def _decrypt_kai(self, text):
         try:
-            data = http.post(f"{self.ENC_DEC}/dec-kai", json={"text": text}).json()
+            url = f"{self.ENC_DEC}/dec-kai"
+            log.info("Anikai: Decrypting-K via %s...", url)
+            resp = http.post(url, json={"text": text}, timeout=self.TIMEOUT_EXTERNAL)
+            data = resp.json()
             return data.get("result") if data and data.get("status") == 200 else None
-        except Exception:
+        except Exception as e:
+            log.warning("Anikai: Decryption-K failed: %s", e)
             return None
 
     def _decrypt_mega(self, text):
         try:
-            data = http.post(f"{self.ENC_DEC}/dec-mega", json={
+            url = f"{self.ENC_DEC}/dec-mega"
+            log.info("Anikai: Decrypting-M via %s...", url)
+            resp = http.post(url, json={
                 "text": text,
                 "agent": HttpClient.DEFAULT_HEADERS["User-Agent"],
-            }).json()
+            }, timeout=self.TIMEOUT_EXTERNAL)
+            data = resp.json()
             return data.get("result") if data and data.get("status") == 200 else None
-        except Exception:
+        except Exception as e:
+            log.warning("Anikai: Decryption-M failed: %s", e)
             return None
 
     @cached("anikai:search", ttl=300)

@@ -7,8 +7,8 @@
 import axios from "axios";
 
 const ANILIST_URL = import.meta.env.VITE_ANILIST_API || "https://graphql.anilist.co";
-const ANIGO_SERVER = import.meta.env.PROD ? "" : (import.meta.env.VITE_ANIGO_SERVER || "http://localhost:5000");
-const PYTHON_API = import.meta.env.PROD ? "" : "http://localhost:5000";
+const ANIGO_SERVER = import.meta.env.PROD ? "" : (import.meta.env.VITE_ANIGO_SERVER || "http://127.0.0.1:5000");
+const PYTHON_API = import.meta.env.PROD ? "" : "http://127.0.0.1:5000";
 
 // ==========================================
 // ANILIST CORE
