@@ -11,6 +11,7 @@ export default function App() {
     <Router>
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/home" element={<Home />} />
         <Route path="/browse" element={<Browse />} />
         <Route path="/watch/:id" element={<Watch />} />
         <Route path="/character/:id" element={<Character />} />

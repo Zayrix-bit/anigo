@@ -115,11 +115,11 @@ export default function Navbar() {
 
           {/* Logo */}
           <Link 
-            to="/" 
+            to="/home" 
             className="flex items-center gap-0 shrink-0"
             onClick={(e) => {
               e.preventDefault();
-              navigate("/");
+              navigate("/home");
               window.scrollTo(0, 0);
             }}
           >

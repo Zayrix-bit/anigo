@@ -839,7 +839,7 @@ export default function Watch() {
           <p>API: {PYTHON_API || "Relative (Origin)"}</p>
           <p>Status: Loading Finished (No Data)</p>
         </div>
-        <Link to="/" className="mt-8 px-6 py-2 bg-red-600 hover:bg-red-700 rounded-full transition-colors text-sm font-bold">
+        <Link to="/home" className="mt-8 px-6 py-2 bg-red-600 hover:bg-red-700 rounded-full transition-colors text-sm font-bold">
           Go Home
         </Link>
       </div>
@@ -862,7 +862,7 @@ export default function Watch() {
 
         {/* 1. Breadcrumbs */}
         <nav className="flex items-center gap-2 py-2 lg:py-4 text-[11px] lg:text-[12px] font-bold text-[#666] overflow-x-auto whitespace-nowrap scrollbar-hide">
-          <Link to="/" className="hover:text-white transition-colors">Home</Link>
+          <Link to="/home" className="hover:text-white transition-colors">Home</Link>
           <span className="opacity-30">/</span>
           <span className="hover:text-white transition-colors uppercase cursor-pointer">{anime.format || "TV"}</span>
           <span className="opacity-30">/</span>

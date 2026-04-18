@@ -8,7 +8,7 @@ export default function Footer() {
     {
       title: "Navigation",
       links: [
-        { name: "Home", path: "/" },
+        { name: "Home", path: "/home" },
         { name: "Browse", path: "/browse" },
         { name: "Trending", path: "/browse?sort=TRENDING_DESC" },
         { name: "Popular", path: "/browse?sort=POPULAR_DESC" },
@@ -42,7 +42,7 @@ export default function Footer() {
           {/* Brand Column */}
           <div className="space-y-6">
             <Link 
-              to="/" 
+              to="/home" 
               className="flex items-center gap-0 group"
               onClick={() => window.scrollTo(0, 0)}
             >

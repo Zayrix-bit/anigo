@@ -108,6 +108,8 @@ export default function Browse() {
       if (filters.country) variables.country = filters.country;
       if (filters.rating) variables.averageScore_greater = parseInt(filters.rating);
       
+      console.info("[AniList] Browse Variables:", variables);
+      
       return getBrowseAnime(variables);
     },
     enabled: true,
