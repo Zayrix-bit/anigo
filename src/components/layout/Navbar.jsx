@@ -3,15 +3,21 @@ import { Link, useNavigate } from "react-router-dom";
 import { ALL_GENRES } from "../../constants/genres";
 import SchedulePanel from "../schedule/SchedulePanel";
 import { useLanguage } from "../../context/LanguageContext";
+import { searchAnime } from "../../services/api";
+import { MessageSquare, Mic, Clock } from "lucide-react";
+
 
 export default function Navbar() {
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [showSchedule, setShowSchedule] = useState(false);
-  const { language, setEN, setJP } = useLanguage();
   const navigate = useNavigate();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showSearchResults, setShowSearchResults] = useState(false);
   const searchContainerRef = useRef(null);
+  const { language, setEN, setJP, getTitle } = useLanguage();
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -23,16 +29,63 @@ export default function Navbar() {
   };
 
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target)) {
+    const handleKeyPress = (e) => {
+      if (e.key === "Escape") {
         setIsSearchOpen(false);
       }
     };
+
+    const handlePopState = () => {
+      setIsSearchOpen(false);
+    };
+
     if (isSearchOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
+      window.history.pushState({ searchOpen: true }, "");
+      window.addEventListener("popstate", handlePopState);
+      document.addEventListener("keydown", handleKeyPress);
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "auto";
     }
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      document.removeEventListener("keydown", handleKeyPress);
+      document.body.style.overflow = "auto";
+    };
   }, [isSearchOpen]);
+
+  // Real-time search logic from Hero.jsx
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(async () => {
+      if (!searchQuery.trim()) {
+        setSearchResults([]);
+        setShowSearchResults(false);
+        return;
+      }
+      setIsSearching(true);
+      setShowSearchResults(true);
+      try {
+        const results = await searchAnime(searchQuery);
+        setSearchResults(results);
+      } catch (err) {
+        console.error("Navbar Search Error:", err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
+
+  const closeSearchOverlay = () => {
+    if (isSearchOpen) {
+      setIsSearchOpen(false);
+      if (window.history.state?.searchOpen) {
+        window.history.back();
+      }
+    }
+  };
 
   const links = [
     { name: "TYPES", path: "/browse", dropdown: "types" },
@@ -179,39 +232,132 @@ export default function Navbar() {
             </button>
           </div>
 
-          {/* Search Bar */}
-          <div ref={searchContainerRef} className="relative flex items-center">
-            <div 
-              className={`absolute right-0 flex items-center bg-[#2a2a2a] border border-white/10 rounded-[4px] h-[34px] transition-all duration-300 ease-out origin-right ${
-                isSearchOpen ? "w-[250px] md:w-[350px] opacity-100" : "w-0 opacity-0 pointer-events-none"
-              }`}
+          {/* Search Trigger */}
+          <div ref={searchContainerRef} className="flex items-center">
+            <button 
+              onClick={() => setIsSearchOpen(true)}
+              className="text-[#888] hover:text-white transition-all transform hover:scale-110"
+              title="Search Anime (Shortcut: /)"
             >
-              <form onSubmit={handleSearchSubmit} className="flex items-center w-full px-2">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search anime..."
-                  className="bg-transparent text-[12px] text-white w-full outline-none placeholder-white/20"
-                  autoFocus={isSearchOpen}
+              <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </button>
+
+            {/* Centered Search Overlay */}
+            {isSearchOpen && (
+              <div className="fixed inset-0 z-[999] flex items-start justify-center pt-[20vh] px-4 pointer-events-none">
+                {/* Backdrop - Stronger blur for the entire screen */}
+                <div 
+                  className="fixed inset-0 bg-black/40 backdrop-blur-md md:backdrop-blur-xl animate-in fade-in duration-300 pointer-events-auto cursor-pointer"
+                  onClick={closeSearchOverlay}
                 />
-                <button type="submit" className="text-white/40 hover:text-white transition-colors">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </button>
-              </form>
-            </div>
-            
-            {!isSearchOpen && (
-              <button 
-                onClick={() => setIsSearchOpen(true)}
-                className="text-[#888] hover:text-white transition-all transform hover:scale-110"
-              >
-                <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </button>
+                
+                {/* Search Box - Matching the screenshot */}
+                <div 
+                  className="relative w-full max-w-[700px] bg-[#1c1c1c] rounded-[4px] shadow-[0_0_100px_rgba(0,0,0,1)] flex items-center p-2 animate-in zoom-in-95 duration-200 pointer-events-auto"
+                >
+                  {/* Internal Close Button (Mobile Friendly) */}
+                  <button 
+                    onClick={closeSearchOverlay}
+                    className="absolute -top-10 right-0 text-white/40 hover:text-white transition-colors flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest"
+                  >
+                    <span>Close</span>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+
+                  <div className="pl-4 text-white/40">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  
+                  <form onSubmit={handleSearchSubmit} className="flex-1 flex items-center">
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search anime"
+                      className="bg-transparent text-[16px] md:text-[18px] text-white w-full outline-none px-4 placeholder-white/20 h-[48px]"
+                      autoFocus
+                    />
+                  </form>
+
+                  <button 
+                    onClick={() => {
+                      closeSearchOverlay();
+                      navigate("/browse");
+                    }}
+                    className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-[3px] text-[13px] font-bold transition-colors shrink-0"
+                  >
+                    <span>Filter</span>
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <circle cx="12" cy="12" r="3" />
+                      <circle cx="12" cy="12" r="6" />
+                      <circle cx="12" cy="12" r="9" />
+                    </svg>
+                  </button>
+
+                  {/* Dropdown Results - Copy from Hero.jsx */}
+                  {showSearchResults && (
+                    <div className="absolute top-full left-0 w-full mt-2 bg-[#1a1a1a] border border-white/10 rounded-[8px] shadow-[0_16px_32px_rgba(0,0,0,0.6)] overflow-hidden z-[210]">
+                      {isSearching ? (
+                        <div className="p-6 text-center text-white/40 text-[13px] animate-pulse">Searching...</div>
+                      ) : searchResults.length > 0 ? (
+                        <ul className="max-h-[60vh] overflow-y-auto scrollbar-hide py-2">
+                          {searchResults.map((anime) => {
+                            const currentEps = anime.nextAiringEpisode ? (anime.nextAiringEpisode.episode - 1) : anime.episodes;
+                            return (
+                              <li
+                                key={anime.id}
+                                onClick={() => {
+                                  closeSearchOverlay();
+                                  navigate(`/watch/${anime.id}`);
+                                }}
+                                className="flex items-start gap-4 p-3 hover:bg-white/[0.03] cursor-pointer transition-colors border-b border-white/5 last:border-0 group"
+                              >
+                                <img
+                                  src={anime.coverImage?.medium || anime.coverImage?.large}
+                                  alt={getTitle(anime.title)}
+                                  className="w-[45px] h-[60px] object-cover rounded-[3px] flex-shrink-0 bg-white/5"
+                                />
+                                <div className="flex flex-col min-w-0 justify-center">
+                                  <span className="text-white text-[14px] font-bold truncate mb-1.5 group-hover:text-red-500 transition-colors">
+                                    {getTitle(anime.title)}
+                                  </span>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="text-[10px] text-white/40 bg-white/5 px-1.5 py-[2px] rounded flex items-center gap-1 font-medium">
+                                      <MessageSquare size={10} className="fill-white/40 text-transparent" />
+                                      {currentEps || "?"}
+                                    </span>
+                                    <span className="text-[10px] text-white/40 bg-white/5 px-1.5 py-[2px] rounded flex items-center gap-1 font-medium">
+                                      <Mic size={10} fill="currentColor" />
+                                      {currentEps || "?"}
+                                    </span>
+                                    <span className="text-[10px] text-white/40 font-bold">
+                                      {anime.format || "TV"}
+                                    </span>
+                                    {anime.seasonYear && (
+                                      <span className="text-[10px] text-white/40 flex items-center gap-1 font-bold">
+                                        <Clock size={10} strokeWidth={3} />
+                                        {anime.seasonYear}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      ) : (
+                        <div className="p-6 text-center text-white/40 text-[13px]">No results found.</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
           </div>
 
