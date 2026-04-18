@@ -46,6 +46,7 @@ const ANIME_QUERY = `
         episodes
         seasonYear
         nextAiringEpisode {
+          airingAt
           episode
         }
         averageScore
@@ -81,6 +82,7 @@ export const SEARCH_QUERY = `
         coverImage { medium large }
         episodes
         nextAiringEpisode {
+          airingAt
           episode
         }
         format
@@ -123,6 +125,7 @@ export const BROWSE_QUERY = `
         episodes
         seasonYear
         nextAiringEpisode {
+          airingAt
           episode
         }
         averageScore
@@ -147,6 +150,7 @@ const SEASONAL_QUERY = `
         format
         episodes
         nextAiringEpisode {
+          airingAt
           episode
         }
         averageScore
@@ -279,6 +283,7 @@ query ($id: Int) {
       }
     }
     nextAiringEpisode {
+      airingAt
       episode
     }
     streamingEpisodes {
@@ -347,7 +352,7 @@ query ($id: Int) {
         }
       }
     }
-    recommendations(sort: [RATING_DESC], perPage: 24) {
+    recommendations(sort: [RATING_DESC], perPage: 50) {
       nodes {
         mediaRecommendation {
           id

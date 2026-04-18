@@ -9,6 +9,7 @@ import { useUserList } from "../context/UserListContext";
 import Navbar from "../components/layout/Navbar";
 import AnimeCard from "../components/common/AnimeCard";
 import SkeletonCard from "../components/common/SkeletonCard";
+import NextEpisodeBanner from "../components/common/NextEpisodeBanner";
 import {
   ChevronLeft,
   ChevronRight,
@@ -148,6 +149,59 @@ export default function Watch() {
     enabled: !!id,
     staleTime: 1000 * 60 * 60 * 6,
   });
+
+  const RECS_PER_PAGE = 12;
+  const [recPageIndex, setRecPageIndex] = useState(0);
+  const [isRecAnimating, setIsRecAnimating] = useState(false);
+
+  // 1. Compute Merged "You May Also Like" (Relations + Recommendations)
+  const allRelated = useMemo(() => {
+    if (!anime) return [];
+    
+    // Get Relations (direct sequels/prequels)
+    const relations = (anime.relations?.edges || [])
+      .filter(edge => edge.node?.type === 'ANIME')
+      .map(edge => edge.node);
+      
+    // Get Recommendations (general suggestions)
+    const recommendations = (anime.recommendations?.nodes || [])
+      .map(node => node.mediaRecommendation)
+      .filter(Boolean);
+      
+    const merged = [...relations, ...recommendations];
+    const seen = new Set();
+    
+    // Filter out current anime and deduplicate
+    return merged.filter(item => {
+      if (!item || seen.has(item.id) || Number(item.id) === Number(id)) return false;
+      seen.add(item.id);
+      return true;
+    }).slice(0, 60); // Fetch even more for pagination depth
+  }, [anime, id]);
+
+  // 2. Memoize Paginated Data (Chunks)
+  const paginatedRecs = useMemo(() => {
+    const pages = [];
+    for (let i = 0; i < allRelated.length; i += RECS_PER_PAGE) {
+      pages.push(allRelated.slice(i, i + RECS_PER_PAGE));
+    }
+    return pages;
+  }, [allRelated]);
+
+  const currentRecPageData = paginatedRecs[recPageIndex] || [];
+  const totalRecPages = paginatedRecs.length;
+
+  // Reset pagination on ID change
+  useEffect(() => {
+    setRecPageIndex(0);
+  }, [id]);
+
+  const changeRecPage = (newIndex) => {
+    if (isRecAnimating || newIndex < 0 || newIndex >= totalRecPages) return;
+    setIsRecAnimating(true);
+    setRecPageIndex(newIndex);
+    setTimeout(() => setIsRecAnimating(false), 400);
+  };
 
   useEffect(() => {
     if (dubInfo && typeof dubInfo.hasDub === "boolean") {
@@ -1330,6 +1384,9 @@ export default function Watch() {
                   </div>
                 </div>
 
+                {/* Next Episode Banner */}
+                <NextEpisodeBanner anime={anime} />
+
                 {/* Description */}
                 <div
                   onClick={() => setIsDescExpanded(!isDescExpanded)}
@@ -1475,24 +1532,44 @@ export default function Watch() {
             )}
 
             {/* Recommendations Section */}
-            {anime.recommendations?.nodes?.length > 0 && (
+            {allRelated.length > 0 && (
               <div className="space-y-10">
                 <header className="flex items-center gap-4">
                   <div className="h-6 w-1 bg-red-600 rounded-full" />
                   <h2 className="text-[14px] font-bold tracking-[0.3em] text-white uppercase">You May Also Like</h2>
                 </header>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4 sm:gap-4 md:gap-5">
-                  {anime.recommendations.nodes.slice(0, 24).map((node, i) => {
-                    const rec = node.mediaRecommendation;
-                    if (!rec) return null;
-                    return (
-                      <div key={rec.id || i} className="animate-in fade-in slide-in-from-bottom-2 duration-500" style={{ animationDelay: `${i * 50}ms` }}>
-                        <AnimeCard anime={rec} />
-                      </div>
-                    );
-                  })}
+                <div 
+                  key={recPageIndex} 
+                  className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4 sm:gap-4 md:gap-5 animate-slide-fade"
+                >
+                  {currentRecPageData.map((rec, i) => (
+                    <div key={rec.id || i} className="animate-in fade-in duration-500" style={{ animationDelay: `${i * 30}ms` }}>
+                      <AnimeCard anime={rec} loading="lazy" />
+                    </div>
+                  ))}
                 </div>
+
+                {totalRecPages > 1 && (
+                  <div className="flex justify-center gap-2 pt-8">
+                    {paginatedRecs.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => changeRecPage(i)}
+                        disabled={isRecAnimating}
+                        aria-label={`Go to page ${i + 1}`}
+                        aria-current={i === recPageIndex}
+                        className={`min-w-[40px] h-10 flex items-center justify-center rounded-sm text-[13px] font-bold transition-all duration-300 ${
+                          i === recPageIndex 
+                            ? "bg-red-600 text-white shadow-[0_0_20px_rgba(220,38,38,0.3)]" 
+                            : "bg-white/5 text-white/40 hover:bg-white/10 hover:text-white border border-white/5"
+                        }`}
+                      >
+                        {i + 1}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </section>

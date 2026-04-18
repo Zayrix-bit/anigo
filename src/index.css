@@ -90,3 +90,12 @@ body::-webkit-scrollbar {
   );
   animation: shimmer 2s infinite linear;
 }
+
+@keyframes slideFade {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.animate-slide-fade {
+  animation: slideFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
