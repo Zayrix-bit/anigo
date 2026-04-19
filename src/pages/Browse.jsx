@@ -594,12 +594,12 @@ export default function Browse() {
 
         {/* Pagination Component */}
         {!isLoading && result.pageInfo?.lastPage > 1 && (
-          <div className="mt-16 flex flex-wrap items-center justify-center gap-2">
+          <div className="mt-12 sm:mt-16 pb-10 flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
             {/* Prev Button */}
             <button
               onClick={() => handlePageChange(Math.max(1, page - 1))}
               disabled={page === 1}
-              className="w-10 h-10 flex items-center justify-center bg-white/[0.03] border border-white/5 rounded-[4px] text-white/40 hover:bg-white/[0.08] hover:text-white transition-all disabled:opacity-20 disabled:cursor-not-allowed group"
+              className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-white/[0.03] border border-white/5 rounded-[4px] text-white/40 hover:bg-white/[0.08] hover:text-white transition-all disabled:opacity-20 disabled:cursor-not-allowed group"
             >
               <ChevronLeft size={16} />
             </button>
@@ -620,7 +620,7 @@ export default function Browse() {
                   <button
                     key={i}
                     onClick={() => handlePageChange(i)}
-                    className={`w-10 h-10 flex items-center justify-center rounded-[4px] text-[13px] font-bold transition-all ${
+                    className={`w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-[4px] text-[12px] sm:text-[13px] font-bold transition-all ${
                       isActive 
                         ? 'bg-red-600 text-white shadow-[0_0_20px_rgba(220,38,38,0.3)]' 
                         : 'bg-white/[0.03] border border-white/5 text-white/40 hover:bg-white/[0.08] hover:text-white'
@@ -637,7 +637,7 @@ export default function Browse() {
             <button
               onClick={() => handlePageChange(Math.min(result.pageInfo.lastPage, page + 1))}
               disabled={!result.pageInfo?.hasNextPage}
-              className="w-10 h-10 flex items-center justify-center bg-white/[0.03] border border-white/5 rounded-[4px] text-white/40 hover:bg-white/[0.08] hover:text-white transition-all disabled:opacity-20 disabled:cursor-not-allowed group"
+              className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-white/[0.03] border border-white/5 rounded-[4px] text-white/40 hover:bg-white/[0.08] hover:text-white transition-all disabled:opacity-20 disabled:cursor-not-allowed group"
             >
               <ChevronRight size={16} />
             </button>
@@ -646,7 +646,7 @@ export default function Browse() {
             <button
               onClick={() => handlePageChange(result.pageInfo.lastPage)}
               disabled={page === result.pageInfo.lastPage}
-              className="w-10 h-10 flex items-center justify-center bg-white/[0.03] border border-white/5 rounded-[4px] text-white/40 hover:bg-white/[0.08] hover:text-white transition-all disabled:opacity-20 disabled:cursor-not-allowed group"
+              className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-white/[0.03] border border-white/5 rounded-[4px] text-white/40 hover:bg-white/[0.08] hover:text-white transition-all disabled:opacity-20 disabled:cursor-not-allowed group"
               title="Last Page"
             >
               <ChevronsRight size={16} />
