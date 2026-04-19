@@ -46,30 +46,34 @@ export default function NextEpisodeBanner({ anime }) {
   }) : "Release date unavailable";
 
   return (
-    <div className="w-full bg-white/[0.03] border border-white/5 rounded-sm overflow-hidden mb-8 group transition-all hover:bg-white/[0.05]">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 gap-4">
-        {/* Date Info */}
+    <div className="w-full bg-[#0d0d0d] border border-white/5 rounded-[4px] overflow-hidden mb-6 sm:mb-8 group transition-all">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between px-3 py-2.5 sm:px-4 sm:py-3 gap-3 sm:gap-4">
+        {/* Left Section: Info */}
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-red-600/10 flex items-center justify-center shrink-0">
+          <div className="hidden sm:flex w-8 h-8 rounded-full bg-red-600/10 items-center justify-center shrink-0">
             <Calendar size={14} className="text-red-600" />
           </div>
-          <div className="flex flex-col">
+          <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold text-white/40 uppercase tracking-widest leading-none">Next Episode</span>
-              <span className="px-1.5 py-0.5 bg-red-600 text-[9px] font-black text-white rounded-[2px] leading-none uppercase">Predicted</span>
+              <span className="text-[13px] sm:text-[14px] font-semibold text-white leading-none">
+                Episode {nextEpisode.episode}
+              </span>
+              <span className="px-1.5 py-0.5 bg-red-600 text-[8px] sm:text-[9px] font-bold text-white rounded-[2px] leading-none uppercase tracking-tighter">
+                Predicted
+              </span>
             </div>
-            <p className="text-[13px] text-white/70 font-medium mt-1">
-              Episode {nextEpisode.episode} is arriving on <span className="text-white font-bold">{releaseDate}</span>
+            <p className="text-[11px] sm:text-[12px] text-white/40 font-medium uppercase tracking-wider">
+              Arriving: <span className="text-white/60 lowercase">{releaseDate}</span>
             </p>
           </div>
         </div>
 
-        {/* Countdown */}
+        {/* Right Section: Countdown */}
         {timeLeft && (
-          <div className="flex items-center gap-4 bg-black/20 px-4 py-2 rounded-sm border border-white/5">
-            <div className="flex items-center gap-2 text-white/30">
-              <Clock size={14} />
-              <span className="text-[10px] font-bold uppercase tracking-wider">Countdown</span>
+          <div className="flex items-center justify-between sm:justify-end gap-4 py-1.5 px-3 sm:p-0 bg-white/[0.03] sm:bg-transparent rounded-[2px] border border-white/5 sm:border-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 text-white/20">
+              <Clock size={12} className="sm:w-[14px] sm:h-[14px]" />
+              <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider leading-none">LIVE</span>
             </div>
             
             <div className="flex items-center gap-3">
@@ -80,10 +84,10 @@ export default function NextEpisodeBanner({ anime }) {
                 { label: 's', value: timeLeft.seconds }
               ].map((item, idx) => (
                 <div key={idx} className="flex items-baseline gap-0.5">
-                  <span className="text-[16px] font-bold text-white tabular-nums leading-none">
+                  <span className="text-[14px] sm:text-[15px] font-medium text-white tabular-nums leading-none">
                     {String(item.value).padStart(2, '0')}
                   </span>
-                  <span className="text-[10px] font-black text-red-600 uppercase leading-none">{item.label}</span>
+                  <span className="text-[9px] sm:text-[10px] font-semibold text-red-600 uppercase leading-none opacity-80">{item.label}</span>
                 </div>
               ))}
             </div>
