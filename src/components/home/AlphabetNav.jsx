@@ -23,11 +23,11 @@ export default function AlphabetNav() {
     <section className="mt-14 max-w-[1400px] mx-auto px-4 md:px-6 select-none">
       {/* Label */}
       <p className="text-center text-[11px] font-bold uppercase tracking-[0.2em] text-white/20 mb-6">
-        Search by alphabet <span className="text-white/40">A to Z</span>
+        Searching anime order by alphabet name <span className="text-white/40">A to Z</span>
       </p>
 
       {/* Letter buttons */}
-      <div className="flex flex-wrap items-center justify-center gap-[8px]">
+      <div className="flex flex-wrap lg:flex-nowrap items-center justify-center gap-[4px] md:gap-[6px] lg:gap-[8px]">
         {/* All */}
         <button 
           onClick={() => handleSearch("ALL")}

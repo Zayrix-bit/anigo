@@ -21,7 +21,10 @@ export default function AnimeCard({ anime }) {
     releasedEpisodes = anime.episodes || 0;
   }
 
-  const progress = `${releasedEpisodes} / ${totalEpisodes}`;
+  // Only show "number" for ongoing/airing, show "current / total" for finished
+  const progress = (anime.status === "RELEASING" || anime.status === "UPCOMING")
+    ? (releasedEpisodes || "0")
+    : `${releasedEpisodes || 0} / ${totalEpisodes}`;
   const format = anime.format || "TV";
   const isAdult = anime.isAdult;
 
@@ -81,7 +84,7 @@ export default function AnimeCard({ anime }) {
 
       {/* Title Section */}
       <div className="w-full mt-2.5">
-        <h3 className="text-[13px] md:text-[14px] font-bold text-white/90 line-clamp-2 leading-[1.4] group-hover:text-red-500 transition-colors">
+        <h3 className="text-[13px] md:text-[14px] font-normal text-white/80 line-clamp-2 leading-[1.4] group-hover:text-red-500 transition-colors">
           {getTitle(anime.title)}
         </h3>
       </div>

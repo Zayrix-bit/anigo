@@ -90,8 +90,7 @@ export default function Portal() {
               </form>
 
               {/* Suggestions */}
-              <div className="flex items-center gap-3 mb-6 md:mb-8 w-full overflow-hidden">
-                <span className="text-[10px] md:text-[11px] font-bold uppercase tracking-widest text-white/20 shrink-0">Suggestions:</span>
+              <div className="flex items-center gap-2 md:gap-3 mb-6 md:mb-8 w-full overflow-hidden">
                 <div className="flex items-center gap-2 md:gap-3 overflow-x-auto scrollbar-hide pb-1">
                   {suggestions.map(s => (
                     <Link 
