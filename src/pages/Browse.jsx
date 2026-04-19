@@ -932,13 +932,13 @@ export default function Browse() {
 
         {/* Results Grid */}
         {loading && animeList.length === 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-6 sm:gap-4 gap-y-8 sm:gap-y-8">
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-6 sm:gap-6 md:gap-8 gap-y-10 sm:gap-y-10">
             {Array.from({ length: 18 }).map((_, i) => (
               <SkeletonCard key={i} />
             ))}
           </div>
         ) : animeList.length > 0 ? (
-          <div className={`grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-6 sm:gap-4 gap-y-8 sm:gap-y-8 transition-opacity duration-300 ${isFetching ? 'opacity-50' : 'opacity-100'}`}>
+          <div className={`grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-6 sm:gap-6 md:gap-8 gap-y-10 sm:gap-y-10 transition-opacity duration-300 ${isFetching ? 'opacity-50' : 'opacity-100'}`}>
             {animeList.map((anime) => (
               <AnimeCard key={anime.id} anime={anime} />
             ))}

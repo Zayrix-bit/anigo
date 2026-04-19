@@ -32,52 +32,47 @@ export default function AnimeCard({ anime }) {
       className="w-full cursor-pointer group flex flex-col"
       onClick={() => navigate(`/watch/${anime.id}${anime.isMAL ? "?mal=true" : ""}`)}
     >
-      {/* Poster image container */}
-      <div className="relative w-full aspect-2/3 overflow-hidden rounded-[6px] bg-[#2a2a2a] shadow-lg text-white">
-        {!imgError ? (
-          <img
-            src={anime.coverImage?.large}
-            alt={getTitle(anime.title)}
-            loading="lazy"
-            onError={() => setImgError(true)}
-            className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
-          />
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center bg-[#222] text-white/20 p-4 text-center">
-            <svg className="w-8 h-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <span className="text-[10px] font-medium uppercase tracking-widest">Image Unavailable</span>
+      {/* Poster image area with wrapping for jutting tags */}
+      <div className="relative">
+        {/* Stacked Tags (Aligned to Left Corner) */}
+        <div className="absolute -top-1 left-0 flex flex-col z-40">
+          <div className="bg-red-600 text-white text-[9px] font-black px-1.5 py-[3px] flex items-center justify-center min-w-[28px]">
+            {format}
           </div>
-        )}
-
-        {/* Red Format Tag (Top Left) */}
-        <div className="absolute top-0 left-0 bg-red-600 text-white text-[10px] font-extrabold px-1.5 py-[3.5px] rounded-br-[4px] z-20 tracking-tighter shadow-md">
-          {format}
+          <div className="bg-[#1a1a1a] text-white/90 text-[9px] font-black px-1.5 py-[3px] flex items-center justify-center min-w-[28px] border-t border-white/5">
+            ?
+          </div>
         </div>
 
-        {/* Professional Age Rating Badge */}
-        <div className={`absolute top-[22px] left-0 px-1.5 py-[2px] rounded-br-[4px] z-10 flex items-center gap-1 border-t border-r border-white/10 shadow-xl backdrop-blur-sm ${(anime.rating?.includes('R') || anime.isAdult) ? 'bg-black/80' : 'bg-[#121212]/90'}`}>
-          {(anime.rating?.includes('R') || anime.isAdult) && <div className="w-[5px] h-[5px] bg-red-500 rounded-full animate-pulse" />}
-          <span className={`text-[10px] font-black tracking-tighter ${(anime.rating?.includes('R') || anime.isAdult) ? 'text-red-500' : 'text-white/80'}`}>
-            {(anime.rating?.includes('R') || anime.isAdult) ? "18+" : (anime.rating || "PG-13")}
-          </span>
-        </div>
+        {/* Poster image container */}
+        <div className="relative w-full aspect-2/3 overflow-hidden rounded-[6px] bg-[#2a2a2a] shadow-lg text-white">
+          {!imgError ? (
+            <img
+              src={anime.coverImage?.large}
+              alt={getTitle(anime.title)}
+              loading="lazy"
+              onError={() => setImgError(true)}
+              className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
+            />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center bg-[#222] text-white/20 p-4 text-center">
+              <svg className="w-8 h-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span className="text-[10px] font-medium uppercase tracking-widest">Image Unavailable</span>
+            </div>
+          )}
 
-        {/* Top Right Indicator (Same to Same) */}
-        <div className="absolute top-0 right-0 bg-red-600 text-white p-1 rounded-bl-[4px] z-20 shadow-md">
-          <div className="w-3.5 h-3.5 flex items-center justify-center font-black text-[10px]">?</div>
-        </div>
-
-        {/* Hover overlay (darker gradient + play icon) */}
-        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none z-30">
-          <svg
-            className="w-12 h-12 text-white drop-shadow-xl scale-75 group-hover:scale-100 transition-transform duration-300"
-            fill="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path d="M8 5v14l11-7z" />
-          </svg>
+          {/* Hover overlay (darker gradient + play icon) */}
+          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none z-30">
+            <svg
+              className="w-12 h-12 text-white drop-shadow-xl scale-75 group-hover:scale-100 transition-transform duration-300"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </div>
         </div>
       </div>
 

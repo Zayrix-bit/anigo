@@ -1551,7 +1551,7 @@ export default function Watch() {
 
                 <div 
                   key={recPageIndex} 
-                  className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4 sm:gap-4 md:gap-5 animate-slide-fade"
+                  className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-6 sm:gap-6 md:gap-8 gap-y-10 animate-slide-fade"
                 >
                   {currentRecPageData.map((rec, i) => (
                     <div key={rec.id || i} className="animate-in fade-in duration-500" style={{ animationDelay: `${i * 30}ms` }}>

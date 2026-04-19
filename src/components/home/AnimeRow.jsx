@@ -23,7 +23,7 @@ export default function AnimeRow({ title, data, isLoading, limit = 6 }) {
       </div>
  
       {/* Grid container */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4 sm:gap-4 md:gap-5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-6 sm:gap-6 md:gap-8 gap-y-10">
         {loading 
           ? Array.from({ length: limit }).map((_, i) => (
               <div key={i} className={i >= 20 ? 'hidden sm:block' : 'block'}>
