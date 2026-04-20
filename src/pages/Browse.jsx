@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { getBrowseAnime, getBrowseAnimeMAL } from "../services/api";
+import { getBrowseAnime, getBrowseAnimeMAL, checkDubAvailability } from "../services/api";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
 import AnimeCard from "../components/common/AnimeCard";
@@ -83,48 +83,58 @@ export default function Browse() {
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   }, [setSearchParams]);
+  const queryData = useMemo(() => {
+    const isMAL = filters.include.includes("Avant Garde");
+    const vars = {
+      page: filters.page,
+      perPage: 50,
+      sort: [filters.sort],
+    };
+
+    if (filters.search) vars.search = filters.search;
+    if (filters.formats.length > 0) vars.format_in = filters.formats;
+
+    if (filters.include.length > 0) {
+      const gen_in = [];
+      const t_in = [];
+      filters.include.forEach(g => {
+        const mapped = GENRE_MAP[g] || g;
+        if (OFFICIAL_GENRES.includes(mapped)) gen_in.push(mapped);
+        else t_in.push(mapped);
+      });
+      if (gen_in.length > 0) vars.genre_in = gen_in;
+      if (t_in.length > 0) vars.tag_in = t_in;
+    }
+
+    if (filters.status) vars.status = filters.status;
+    if (filters.year) vars.seasonYear = parseInt(filters.year);
+    if (filters.season) vars.season = filters.season;
+    if (filters.country.length > 0) vars.country = filters.country[0];
+    if (filters.rating) vars.averageScore_greater = parseInt(filters.rating);
+
+    return { vars, isMAL, lang: filters.language };
+  }, [filters]);
 
   const { data: result = { media: [], pageInfo: { total: 0 } }, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ["browse", filters],
-    queryFn: () => {
-      if (filters.include.includes("Avant Garde")) {
-        return getBrowseAnimeMAL({
-          page: filters.page,
-          genres: filters.include,
-          search: filters.search,
-          status: filters.status,
-          sort: filters.sort
-        });
-      }
+    queryKey: ["browse", queryData],
+    queryFn: async () => {
+      const { vars, isMAL } = queryData;
+      let res = await (isMAL ? getBrowseAnimeMAL(vars) : getBrowseAnime(vars));
+      
+      // AUTO-DECORATE WITH DUB INFO (Parallel)
+      // Mirroring Homepage "Verified Dub" logic
+      const mediaWithDub = await Promise.all(
+        (res.media || []).map(async (anime) => {
+          try {
+            const dubInfo = await checkDubAvailability(anime.id);
+            return { ...anime, dub: dubInfo.hasDub };
+          } catch {
+            return { ...anime, dub: false };
+          }
+        })
+      );
 
-      const vars = {
-        page: filters.page,
-        perPage: 48,
-        sort: [filters.sort],
-      };
-
-      if (filters.search) vars.search = filters.search;
-      if (filters.formats.length > 0) vars.format_in = filters.formats;
-
-      if (filters.include.length > 0) {
-        const gen_in = [];
-        const t_in = [];
-        filters.include.forEach(g => {
-          const mapped = GENRE_MAP[g] || g;
-          if (OFFICIAL_GENRES.includes(mapped)) gen_in.push(mapped);
-          else t_in.push(mapped);
-        });
-        if (gen_in.length > 0) vars.genre_in = gen_in;
-        if (t_in.length > 0) vars.tag_in = t_in;
-      }
-
-      if (filters.status) vars.status = filters.status;
-      if (filters.year) vars.seasonYear = parseInt(filters.year);
-      if (filters.season) vars.season = filters.season;
-      if (filters.country.length > 0) vars.country = filters.country[0]; // AniList takes single CountryCode
-      if (filters.rating) vars.averageScore_greater = parseInt(filters.rating);
-
-      return getBrowseAnime(vars);
+      return { ...res, media: mediaWithDub };
     },
     keepPreviousData: true,
     staleTime: 1000 * 60 * 5,
@@ -132,16 +142,18 @@ export default function Browse() {
 
   const animeList = useMemo(() => {
     const rawList = result.media || [];
-    if (filters.include.length === 0 && filters.exclude.length === 0) return rawList;
     return rawList.filter(anime => {
       const allLabels = [...(anime.genres || []), ...(anime.tags || []).map(t => t.name)];
       if (filters.exclude.some(ex => allLabels.includes(GENRE_MAP[ex] || ex))) return false;
       if (filters.include.length > 0) {
         if (!filters.include.some(inc => allLabels.includes(GENRE_MAP[inc] || inc))) return false;
       }
+      if (filters.language.includes('DUB')) {
+        if (!anime.dub) return false;
+      }
       return true;
     });
-  }, [result.media, filters.include, filters.exclude]);
+  }, [result.media, filters.include, filters.exclude, filters.language]);
 
   const hasNextPage = result.pageInfo?.hasNextPage || false;
 
@@ -381,16 +393,24 @@ export default function Browse() {
                                 <label className="block text-[7px] text-white/20 uppercase tracking-[0.2em] px-1 font-bold">Language</label>
                                 <div className="space-y-1 px-0.5">
                                   {[
-                                    {label:"Hard Sub", v:"HARD_SUB"}, 
-                                    {label:"Soft Sub", v:"SOFT_SUB"}, 
-                                    {label:"Dub", v:"DUB"}
+                                    {label: "Sub", v: "SUB"},
+                                    {label: "Dub", v: "DUB"}
                                   ].map(l => (
-                                    <button key={l.v} onClick={() => toggleFilter('language', l.v)} className="flex items-center gap-1.5 group w-full py-0.5">
-                                      <div className={`w-2.5 h-2.5 rounded-[2px] border transition-all flex items-center justify-center ${filters.language.includes(l.v) ? 'bg-red-600 border-red-600' : 'bg-white/5 border-white/10 group-hover:border-white/20'}`}>
-                                        {filters.language.includes(l.v) && <Check size={7} strokeWidth={4} className="text-white" />}
+                                    <label key={l.v} className="flex items-center gap-2 px-2 py-1.5 hover:bg-white/5 rounded-md cursor-pointer group transition-colors">
+                                      <div 
+                                        onClick={() => toggleFilter('language', l.v)}
+                                        className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-all ${
+                                          filters.language.includes(l.v) ? 'bg-red-600 border-red-600' : 'border-white/20 group-hover:border-white/40'
+                                        }`}
+                                      >
+                                        {filters.language.includes(l.v) && <Check size={10} strokeWidth={3} />}
                                       </div>
-                                      <span className={`text-[10px] transition-colors ${filters.language.includes(l.v) ? 'text-white/90' : 'text-white/30 group-hover:text-white/50'}`}>{l.label}</span>
-                                    </button>
+                                      <span className={`text-[10px] font-medium transition-colors ${
+                                        filters.language.includes(l.v) ? 'text-white' : 'text-white/40 group-hover:text-white/60'
+                                      }`}>
+                                        {l.label}
+                                      </span>
+                                    </label>
                                   ))}
                                 </div>
                               </div>

@@ -30,10 +30,15 @@ export default function AnimeCard({ anime }) {
       {/* Poster image area with wrapping for jutting tags */}
       <div className="relative">
         {/* Stacked Tags (Aligned to Left Corner) */}
-        <div className="absolute -top-1 left-0 flex flex-col items-start z-40">
+        <div className="absolute -top-1 left-0 flex flex-col items-start z-40 gap-1">
           <div className="bg-red-600 text-white text-[9px] font-black px-1.5 py-[3px] flex items-center justify-center min-w-[28px]">
             {format}
           </div>
+          {anime.dub && (
+            <div className="bg-white text-black text-[8px] font-black px-1 py-[1.5px] flex items-center justify-center rounded-br-sm shadow-lg border-l border-b border-white/20">
+              DUB
+            </div>
+          )}
         </div>
 
         {/* 18+ Badge (Top Right Corner - Professional Red) */}
