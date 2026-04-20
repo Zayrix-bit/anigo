@@ -1,6 +1,6 @@
 """
 ╔═══════════════════════════════════════════════════════════════════════════════╗
-║   ANIGO — Unified Anime Scraper API                                         ║
+║   AniXO — Unified Anime Scraper API                                         ║
 ║   Clean, structured, zero-AJAX architecture using centralized HTTP client   ║
 ╚═══════════════════════════════════════════════════════════════════════════════╝
 """
@@ -40,7 +40,7 @@ class ColoredFormatter(logging.Formatter):
         return super().format(record)
 
 
-log = logging.getLogger("anigo")
+log = logging.getLogger("anixo")
 log.setLevel(logging.INFO)
 _handler = logging.StreamHandler()
 _handler.setFormatter(ColoredFormatter("[%(asctime)s] %(levelname)s ⚡ %(message)s", datefmt="%H:%M:%S"))

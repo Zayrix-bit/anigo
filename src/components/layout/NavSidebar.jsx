@@ -133,7 +133,7 @@ export default function NavSidebar({ open, onClose, initialTab = "menu" }) {
         <div className="px-4 py-3 flex items-center justify-between">
            <div className="flex items-center gap-0">
              <span className="text-[16px] font-bold italic text-white leading-none tracking-tight">Ani</span>
-             <span className="text-[16px] font-bold italic bg-red-600 text-white px-[4px] py-[1px] rounded-[2.5px] leading-none -ml-px">GO</span>
+             <span className="text-[16px] font-bold italic bg-red-600 text-white px-[4px] py-[1px] rounded-[2.5px] leading-none -ml-px">XO</span>
            </div>
            <button onClick={onClose} className="text-white/20 hover:text-white transition-colors p-1.5"><X size={18} /></button>
         </div>
@@ -290,7 +290,7 @@ export default function NavSidebar({ open, onClose, initialTab = "menu" }) {
         <div className="p-5 bg-[#0c0c0c] border-t border-white/5 mb-[-2px]">
            <Link to="/home" onClick={onClose} className="flex items-center gap-0 mb-1 opacity-40 hover:opacity-100 transition-opacity">
              <span className="text-[12px] font-bold italic text-white tracking-tight">Ani</span>
-             <span className="text-[12px] font-bold italic bg-red-600 text-white px-[3px] py-[0.5px] rounded-[2px] -ml-px">GO</span>
+             <span className="text-[12px] font-bold italic bg-red-600 text-white px-[3px] py-[0.5px] rounded-[2px] -ml-px">XO</span>
            </Link>
            <div className="flex gap-3">
              <a href="#" className="text-[8px] font-medium uppercase tracking-[0.2em] text-white/20 hover:text-white transition-colors">Discord</a>

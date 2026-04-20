@@ -107,8 +107,7 @@ export default function Navbar() {
       <nav className="fixed top-0 left-0 w-full z-110 bg-[#121212]/95 backdrop-blur-md border-b border-white/5">
         <div className="max-w-[1720px] mx-auto px-2 md:px-4 h-[56px] flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {!isLandingPage && (
-              <button
+            <button
                 onClick={() => {
                   setSidebarTab("menu");
                   setShowSidebar(true);
@@ -119,7 +118,6 @@ export default function Navbar() {
                   <path strokeLinecap="round" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               </button>
-            )}
 
             {/* Logo */}
             {!isLandingPage && (
@@ -136,7 +134,7 @@ export default function Navbar() {
                   Ani
                 </span>
                 <span className="text-[20px] md:text-[22px] font-bold italic bg-red-600 text-white px-[5px] py-[2px] rounded-[4px] leading-none -ml-px">
-                  GO
+                  XO
                 </span>
               </Link>
             )}

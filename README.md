@@ -1,6 +1,6 @@
-# 🎌 Anigo - Premium Anime Streaming Platform
+# 🎌 AniXO - Premium Anime Streaming Platform
 
-Anigo is a high-performance, full-stack anime streaming application built with a modern React frontend and a powerful Python scraping engine. It features seamless integration with AniList, MAL (Jikan), and Kitsu to provide a rich metadata experience and stable streaming.
+AniXO is a high-performance, full-stack anime streaming application built with a modern React frontend and a powerful Python scraping engine. It features seamless integration with AniList, MAL (Jikan), and Kitsu to provide a rich metadata experience and stable streaming.
 
 ---
 
@@ -9,7 +9,7 @@ Anigo is a high-performance, full-stack anime streaming application built with a
 Below is the complete architectural layout of the project:
 
 ```text
-anigo/
+anixo/
 ├── api/                    # 🐍 Python Backend (Vercel Functions)
 │   └── index.py            # Unified API Core (Anikai, Aniwatch, Kitsu Fallback)
 ├── src/                    # ⚛️ React (Vite) Frontend
@@ -71,14 +71,14 @@ Ensure you have **Node.js 20+** and **Python 3.10+** installed.
 
 ### 2. Frontend Setup
 ```bash
-cd anigo
+cd anixo
 npm install
 npm run dev
 ```
 
 ### 3. Backend Setup
 ```bash
-cd anigo/api
+cd anixo/api
 pip install -r ../requirements.txt
 python index.py
 ```
@@ -86,5 +86,5 @@ python index.py
 ---
 
 ## 👤 Author
-Developed with ❤️ by the Anigo Team.  
+Developed with ❤️ by the AniXO Team.  
 *Educational use only.*

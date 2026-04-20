@@ -1,7 +1,7 @@
 {
-  "name": "anigo-server",
+  "name": "anixo-server",
   "version": "1.0.0",
-  "description": "Backend API for Anigo - Consumet powered sub/dub availability checker",
+  "description": "Backend API for AniXO - Consumet powered sub/dub availability checker",
   "main": "index.js",
   "type": "module",
   "scripts": {

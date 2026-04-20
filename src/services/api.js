@@ -7,7 +7,7 @@
 import axios from "axios";
 
 const ANILIST_URL = import.meta.env.VITE_ANILIST_API || "https://graphql.anilist.co";
-const ANIGO_SERVER = import.meta.env.PROD ? "" : (import.meta.env.VITE_ANIGO_SERVER || "http://127.0.0.1:5000");
+const ANIXO_SERVER = import.meta.env.PROD ? "" : (import.meta.env.VITE_ANIXO_SERVER || "http://127.0.0.1:5000");
 const PYTHON_API = import.meta.env.PROD ? "" : "http://127.0.0.1:5000";
 
 // ==========================================
@@ -687,7 +687,7 @@ export async function getJikanAnimeDetails(malId) {
  */
 export async function checkDubAvailability(anilistId) {
   try {
-    const { data } = await axios.get(`${ANIGO_SERVER}/api/check-dub/${anilistId}`);
+    const { data } = await axios.get(`${ANIXO_SERVER}/api/check-dub/${anilistId}`);
     return data;
   } catch (err) {
     console.error("Dub check failed:", err.message);
@@ -699,7 +699,7 @@ export async function checkDubAvailability(anilistId) {
 export async function getSecondaryEpisodeMeta(title, altTitle = "", kitsuId = "") {
   if (!title && !altTitle && !kitsuId) return {};
   try {
-    const { data } = await axios.get(`${ANIGO_SERVER}/api/meta/episodes`, {
+    const { data } = await axios.get(`${ANIXO_SERVER}/api/meta/episodes`, {
       params: { 
         title,
         alt_title: altTitle,
@@ -716,7 +716,7 @@ export async function getSecondaryEpisodeMeta(title, altTitle = "", kitsuId = ""
 export async function getMalSyncMapping(malId) {
   if (!malId) return null;
   try {
-    const { data } = await axios.get(`${ANIGO_SERVER}/api/malsync/${malId}`);
+    const { data } = await axios.get(`${ANIXO_SERVER}/api/malsync/${malId}`);
     return data;
   } catch (err) {
     console.error("MalSync mapping failed:", err);

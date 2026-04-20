@@ -47,10 +47,10 @@ export default function Footer() {
               onClick={() => window.scrollTo(0, 0)}
             >
               <span className="text-[24px] font-black italic text-white leading-none tracking-tight group-hover:text-red-500 transition-colors">Ani</span>
-              <span className="text-[24px] font-black italic bg-red-600 text-white px-[5px] py-[3px] rounded-[4px] leading-none ml-[-1px] shadow-lg shadow-red-900/20">GO</span>
+              <span className="text-[24px] font-black italic bg-red-600 text-white px-[5px] py-[3px] rounded-[4px] leading-none ml-[-1px] shadow-lg shadow-red-900/20">XO</span>
             </Link>
             <p className="text-[13px] text-white/40 leading-relaxed font-medium max-w-[280px]">
-              AniGo is a premier destination for high-fidelity anime streaming. We provide a seamless, ad-free experience for the global anime community.
+              AniXo is a premier destination for high-fidelity anime streaming. We provide a seamless, ad-free experience for the global anime community.
             </p>
             <div className="flex items-center gap-4 pt-2">
               <MessageSquare size={18} className="text-white/20 hover:text-[#5865F2] cursor-pointer" />
@@ -85,7 +85,7 @@ export default function Footer() {
         {/* Bottom Bar */}
         <div className="pt-10 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-white/20">
-            <span>&copy; {currentYear} AniGo</span>
+            <span>&copy; {currentYear} AniXO</span>
             <div className="w-1 h-1 bg-white/10 rounded-full" />
             <span className="flex items-center gap-1 group">
               Made with <Heart size={10} className="text-red-600" fill="currentColor" /> by the community

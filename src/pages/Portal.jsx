@@ -11,7 +11,7 @@ export default function Portal() {
 
   // Professional UX: Page Title and Scroll Reset
   useEffect(() => {
-    document.title = "AniGO | Watch Free Anime Online";
+    document.title = "AniXO | Watch Free Anime Online";
     window.scrollTo(0, 0);
   }, []);
 
@@ -59,7 +59,7 @@ export default function Portal() {
               {/* Logo area */}
               <div className="mb-6 md:mb-8 flex items-center justify-center lg:justify-start gap-0">
                  <span className="text-[28px] md:text-[32px] font-black italic text-white tracking-tighter">Ani</span>
-                 <span className="text-[28px] md:text-[32px] font-black italic bg-red-600 text-white px-2.5 py-0 rounded-[5px] ml-1 shadow-lg shadow-red-900/30">GO</span>
+                 <span className="text-[28px] md:text-[32px] font-black italic bg-red-600 text-white px-2.5 py-0 rounded-[5px] ml-1 shadow-lg shadow-red-900/30">XO</span>
               </div>
 
               <h1 className="text-2xl md:text-[36px] font-bold text-white mb-5 md:mb-6 leading-[1.1] tracking-tight text-center lg:text-left">
@@ -134,7 +134,7 @@ export default function Portal() {
               <div className="relative z-10 space-y-6 h-full flex flex-col">
                 <div className="space-y-3">
                   <h2 className="text-[18px] font-black uppercase tracking-[0.2em] text-white/80 border-l-4 border-red-600 pl-4 py-1">
-                    AniGo: Best Free Anime Streaming
+                    AniXo: Best Free Anime Streaming
                   </h2>
                   <p className="text-[13px] leading-[1.6] text-white/50 font-medium">
                     Anime transcends mere animation; it serves as a portal to captivating worlds brimming with emotion, 
@@ -143,16 +143,16 @@ export default function Portal() {
                   </p>
                   <p className="text-[13px] leading-[1.6] text-white/50 font-medium">
                     However, not all platforms deliver an exceptional experience. Among the myriad options, 
-                    <span className="text-red-500"> AniGo.to </span> shines as a beacon of excellence for enthusiasts.
+                    <span className="text-red-500"> anixo.online </span> shines as a beacon of excellence for enthusiasts.
                   </p>
                 </div>
 
                 <div className="space-y-3">
                   <h3 className="text-[16px] font-bold text-white/90">
-                     1. What is AniGo.to?
+                     1. What is anixo.online?
                   </h3>
                   <p className="text-[12px] leading-[1.6] text-white/40">
-                    AniGo is a premium anime platform that offers a safe, fast, and high-quality streaming experience. 
+                    AniXo is a premium anime platform that offers a safe, fast, and high-quality streaming experience. 
                     We prioritize user interface, minimal ads, and vast database synchronization 
                     for the most accurate tracking.
                   </p>

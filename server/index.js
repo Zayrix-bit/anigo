@@ -56,6 +56,6 @@ app.get("/api/health", (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Anigo Server running on http://localhost:${PORT}`);
+  console.log(`🚀 AniXO Server running on http://localhost:${PORT}`);
   console.log(`📡 Dub check endpoint: http://localhost:${PORT}/api/check-dub/:anilistId`);
 });
