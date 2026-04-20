@@ -23,7 +23,7 @@ export default function AnimeCard({ anime }) {
   const format = anime.format || "TV";
 
   return (
-    <div 
+    <div
       className="w-full cursor-pointer group flex flex-col"
       onClick={() => navigate(`/watch/${anime.id}${anime.isMAL ? "?mal=true" : ""}`)}
     >
@@ -34,10 +34,14 @@ export default function AnimeCard({ anime }) {
           <div className="bg-red-600 text-white text-[9px] font-black px-1.5 py-[3px] flex items-center justify-center min-w-[28px]">
             {format}
           </div>
-          <div className="bg-[#1a1a1a] text-white/90 text-[10px] font-medium px-1.5 py-[3px] flex items-center justify-center border-t border-white/5 uppercase whitespace-nowrap">
-            {anime.rating || anime.ageRating || anime.ageRatingGuide || (anime.isAdult ? "18+" : "PG-13")}
-          </div>
         </div>
+
+        {/* 18+ Badge (Top Right Corner - Professional Red) */}
+        {(anime.isAdult || anime.ageRating === "R" || anime.rating?.includes("18")) && (
+          <div className="absolute top-1.5 right-1.5 z-40 bg-red-600/90 backdrop-blur-md text-white text-[10px] font-black px-1.5 py-[2px] rounded-[4px] shadow-[0_2px_10px_rgba(220,38,38,0.4)] flex items-center justify-center border border-white/10 tracking-widest">
+            18+
+          </div>
+        )}
 
         {/* Poster image container */}
         <div className="relative w-full aspect-2/3 overflow-hidden rounded-[6px] bg-[#2a2a2a] shadow-lg text-white">
@@ -75,13 +79,13 @@ export default function AnimeCard({ anime }) {
       <div className="flex justify-center -mt-[2px] relative z-20">
         <div className="flex items-center bg-[#050505] rounded-[4px] border border-white/5 overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
           {/* Cut-Corner CC Badge */}
-          <div 
+          <div
             className="bg-red-600 px-1.5 py-0.5 flex items-center justify-center relative"
             style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%, 15% 100%, 0 85%)' }}
           >
             <span className="text-[10px] font-medium text-white italic tracking-tight">CC</span>
           </div>
-          
+
           {/* Episode Count */}
           <div className="flex items-center px-2 py-0.5 gap-1.5">
             <span className="text-[12px] font-normal text-white leading-none">{releasedEpisodes || "0"}</span>

@@ -10,6 +10,7 @@ import re
 import json as _json
 import logging
 import difflib
+import hashlib
 from functools import wraps
 
 from flask import Flask, jsonify, request
@@ -66,13 +67,14 @@ class HttpClient:
         "Accept-Language": "en-US,en;q=0.9",
     }
 
-    def __init__(self, retries=5, backoff=1, timeout=15):
+    def __init__(self, retries=5, backoff=2, timeout=15):
         self.timeout = timeout
         self.session = requests.Session()
         retry_strategy = Retry(
             total=retries,
             backoff_factor=backoff,
             status_forcelist=[429, 500, 502, 503, 504],
+            allowed_methods=["GET", "POST"] # Allow POST retries for GraphQL
         )
         adapter = HTTPAdapter(max_retries=retry_strategy)
         self.session.mount("http://", adapter)
@@ -450,7 +452,7 @@ class AniwatchScraper:
 
     BASE = "https://aniwatchtv.to"
 
-    @cached("aniwatch:recent", ttl=600)
+    @cached("aniwatch:recent", ttl=300)
     def get_recent_episodes(self, type="dub", limit=24):
         """Fetch recently updated episodes across multiple pages to meet the limit."""
         results = []
@@ -846,12 +848,25 @@ def api_anilist_proxy():
     if not payload or "query" not in payload:
         return {"error": "Invalid payload"}, 400
 
-    # Basic abuse mitigation: Ensure query contains AniList keywords
+    # 1. Hashing for Cache Key
+    # We stringify the payload (query + variables) to create a unique key
+    payload_str = _json.dumps(payload, sort_keys=True)
+    payload_hash = hashlib.md5(payload_str.encode()).hexdigest()
+    cache_key = f"anilist:proxy:{payload_hash}"
+
+    # 2. Check Cache
+    entry = _cache.get(cache_key)
+    if entry and (time.time() - entry["ts"]) < 300: # 5 minutes cache
+        log.info("AniList Proxy: ⚡ Cache Hit")
+        return entry["data"]
+
+    # 3. Basic abuse mitigation: Ensure query contains AniList keywords
     query_str = str(payload.get("query", "")).lower()
-    allowed_keywords = ["page", "media", "staff", "character", "studio", "airing", "trend"]
+    allowed_keywords = ["page", "media", "staff", "character", "studio", "airing", "trend", "search"]
     if not any(k in query_str for k in allowed_keywords):
          return {"error": "Forbidden: Non-AniList query pattern detected"}, 403
 
+    log.info("AniList Proxy: 🌐 Fetching from Source...")
     resp = http.post(
         "https://graphql.anilist.co",
         json=payload,
@@ -859,15 +874,27 @@ def api_anilist_proxy():
         timeout=20
     )
 
-    # Robust response parsing
+    # 4. Handle Rate Limiting
+    if resp.status_code == 429:
+        retry_after = resp.headers.get("Retry-After", "Unknown")
+        log.warning(f"AniList Proxy: ⚠️ Rate Limited (429). Retry-After: {retry_after}")
+        return {"error": "AniList rate limit reached. Please try again in a moment.", "retry_after": retry_after}, 429
+
+    # 5. Robust response parsing
     try:
         content_type = resp.headers.get("Content-Type", "")
         if "application/json" in content_type:
-            return resp.json(), resp.status_code
+            data = resp.json()
+            
+            # Use status code to determine if we should cache
+            # Only cache successful responses (no errors field usually)
+            if resp.status_code == 200 and "errors" not in data:
+                _cache[cache_key] = {"data": data, "ts": time.time()}
+                
+            return data, resp.status_code
         else:
             log.error(f"AniList Proxy: Non-JSON response received. Headers: {resp.headers}")
-            log.debug(f"Raw response: {resp.text[:500]}")
-            return {"error": "AniList returned non-JSON response", "raw": resp.text[:200]}, resp.status_code
+            return {"error": "AniList returned non-JSON response"}, resp.status_code
     except Exception as e:
         log.exception("AniList Proxy: Failed to parse response")
         return {"error": "Proxy internal error", "details": str(e)}, 500

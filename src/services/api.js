@@ -21,21 +21,21 @@ async function fetchFromAniList(query, variables = {}) {
       Object.entries(variables).filter(([, v]) => v !== null && v !== undefined && (Array.isArray(v) ? v.length > 0 : true))
     );
 
-    const { data } = await axios.post(`${PYTHON_API}/api/anilist/proxy`, { 
-      query, 
-      variables: cleanVariables 
+    const { data } = await axios.post(`${PYTHON_API}/api/anilist/proxy`, {
+      query,
+      variables: cleanVariables
     }, {
       headers: { "Content-Type": "application/json" },
-      timeout: 15000, 
+      timeout: 15000,
     });
 
     if (!data) throw new Error("No data received from proxy");
-    
+
     if (data.errors) {
       console.error("AniList GraphQL Errors:", data.errors);
       return { media: [], pageInfo: { total: 0 } };
     }
-    
+
     // Support both direct data and data.data (depending on proxy implementation)
     const result = data.data?.Page || data.Page || { media: [], pageInfo: { total: 0 } };
     return result;
@@ -72,24 +72,21 @@ const ANIME_QUERY = `
   }
 `;
 
-export async function getTrendingAnime() {
-  const res = await fetchFromAniList(ANIME_QUERY, { page: 1, sort: ["TRENDING_DESC"] });
-  return res.media || [];
+export async function getTrendingAnime(page = 1) {
+  return fetchFromAniList(ANIME_QUERY, { page, sort: ["TRENDING_DESC"] });
 }
 
-export async function getPopularAnime() {
-  const res = await fetchFromAniList(ANIME_QUERY, { page: 1, sort: ["POPULARITY_DESC"] });
-  return res.media || [];
+export async function getPopularAnime(page = 1) {
+  return fetchFromAniList(ANIME_QUERY, { page, sort: ["POPULARITY_DESC"] });
 }
 
-export async function getNewReleases() {
-  const res = await fetchFromAniList(ANIME_QUERY, { page: 1, sort: ["START_DATE_DESC", "TRENDING_DESC"] });
-  return res.media || [];
+export async function getNewReleases(page = 1) {
+  return fetchFromAniList(ANIME_QUERY, { page, sort: ["START_DATE_DESC", "TRENDING_DESC"] });
 }
 
 export const SEARCH_QUERY = `
-  query ($search: String) {
-    Page(page: 1, perPage: 10) {
+  query ($search: String, $page: Int) {
+    Page(page: $page, perPage: 10) {
       media(type: ANIME, search: $search) {
         id
         title { romaji english native }
@@ -207,21 +204,21 @@ export const MAL_GENRE_MAP = {
 
 export async function getBrowseAnimeMAL(variables) {
   const { page = 1, genres = [], search = "", status = "", sort = "popularity" } = variables;
-  
+
   // Map genre names to MAL IDs
   const malGenreIds = genres.map(g => MAL_GENRE_MAP[g]).filter(Boolean);
-  
+
   let url = `https://api.jikan.moe/v4/anime?page=${page}&limit=24`;
   if (search) url += `&q=${encodeURIComponent(search)}`;
   if (malGenreIds.length > 0) url += `&genres=${malGenreIds.join(',')}`;
-  
+
   if (status === "RELEASING") url += "&status=airing";
   if (status === "FINISHED") url += "&status=complete";
-  
+
   if (sort.includes("POPULARITY")) url += "&order_by=popularity&sort=desc";
   else if (sort.includes("SCORE")) url += "&order_by=score&sort=desc";
   else url += "&order_by=popularity&sort=desc";
-  
+
   try {
     const { data } = await axios.get(url);
     return {
@@ -264,8 +261,8 @@ export async function getBrowseAnimeMAL(variables) {
 }
 
 const SEASONAL_QUERY = `
-  query ($season: MediaSeason, $seasonYear: Int, $sort: [MediaSort]) {
-    Page(page: 1, perPage: 30) {
+  query ($season: MediaSeason, $seasonYear: Int, $sort: [MediaSort], $page: Int) {
+    Page(page: $page, perPage: 30) {
       media(type: ANIME, season: $season, seasonYear: $seasonYear, sort: $sort) {
         id
         title { romaji english native }
@@ -284,22 +281,22 @@ const SEASONAL_QUERY = `
   }
 `;
 
-export async function getPopularThisSeason() {
+export async function getPopularThisSeason(page = 1) {
   const date = new Date();
   const month = date.getMonth();
   const year = date.getFullYear();
-  
+
   let season = "WINTER";
   if (month >= 2 && month <= 4) season = "SPRING";
   else if (month >= 5 && month <= 7) season = "SUMMER";
   else if (month >= 8 && month <= 10) season = "FALL";
-  
-  const res = await fetchFromAniList(SEASONAL_QUERY, { 
-    season, 
+
+  return fetchFromAniList(SEASONAL_QUERY, {
+    season,
     seasonYear: year,
-    sort: ["POPULARITY_DESC"] 
+    sort: ["POPULARITY_DESC"],
+    page
   });
-  return res.media || [];
 }
 
 export async function getTopRatedAnime() {
@@ -308,8 +305,8 @@ export async function getTopRatedAnime() {
 }
 
 export async function getUpcomingAnime() {
-  const res = await fetchFromAniList(ANIME_QUERY, { 
-    page: 1, 
+  const res = await fetchFromAniList(ANIME_QUERY, {
+    page: 1,
     sort: ["POPULARITY_DESC"],
     status: "NOT_YET_RELEASED"
   });
@@ -510,10 +507,10 @@ export async function getAnimeDetails(id, isMal = false) {
   }
 
   const variables = finalIsMal ? { idMal: parseInt(finalId) } : { id: parseInt(finalId) };
-  
+
   if (isNaN(variables.id) && !finalIsMal) {
-      console.error("[Watch] Aborting AniList query: ID is still non-numeric after resolution.");
-      return null;
+    console.error("[Watch] Aborting AniList query: ID is still non-numeric after resolution.");
+    return null;
   }
 
   try {
@@ -736,13 +733,15 @@ export async function checkDubAvailability(anilistId) {
 /**
  * Fetch recently dubbed episodes from the native Python backend.
  */
-export async function getRecentDubs() {
+export async function getRecentDubs(page = 1) {
   try {
-    const { data } = await axios.get(`${PYTHON_API}/api/python/recent-dub`);
+    const { data } = await axios.get(`${PYTHON_API}/api/python/recent-dub`, {
+      params: { page }
+    });
     return data;
   } catch (err) {
     console.error("Recent Dubs fetch failed:", err);
-    return { media: [] };
+    return { media: [], pageInfo: { lastPage: 1 } };
   }
 }
 
@@ -750,7 +749,7 @@ export async function getSecondaryEpisodeMeta(title, altTitle = "", kitsuId = ""
   if (!title && !altTitle && !kitsuId) return {};
   try {
     const { data } = await axios.get(`${ANIXO_SERVER}/api/meta/episodes`, {
-      params: { 
+      params: {
         title,
         alt_title: altTitle,
         kitsu_id: kitsuId
