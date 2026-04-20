@@ -16,17 +16,31 @@ const PYTHON_API = import.meta.env.PROD ? "" : "http://127.0.0.1:5000";
 
 async function fetchFromAniList(query, variables = {}) {
   try {
-    const { data } = await axios.post(`${PYTHON_API}/api/anilist/proxy`, { query, variables }, {
+    // Clean up variables to remove null/undefined values
+    const cleanVariables = Object.fromEntries(
+      Object.entries(variables).filter(([, v]) => v !== null && v !== undefined && (Array.isArray(v) ? v.length > 0 : true))
+    );
+
+    const { data } = await axios.post(`${PYTHON_API}/api/anilist/proxy`, { 
+      query, 
+      variables: cleanVariables 
+    }, {
       headers: { "Content-Type": "application/json" },
+      timeout: 15000, 
     });
 
+    if (!data) throw new Error("No data received from proxy");
+    
     if (data.errors) {
       console.error("AniList GraphQL Errors:", data.errors);
       return { media: [], pageInfo: { total: 0 } };
     }
-    return data.data?.Page || { media: [], pageInfo: { total: 0 } };
+    
+    // Support both direct data and data.data (depending on proxy implementation)
+    const result = data.data?.Page || data.Page || { media: [], pageInfo: { total: 0 } };
+    return result;
   } catch (err) {
-    console.error("AniList Fetch Error:", err);
+    console.error("AniList Fetch Error:", err.message);
     return { media: [], pageInfo: { total: 0 } };
   }
 }
@@ -478,7 +492,30 @@ query ($id: Int, $idMal: Int) {
 `;
 
 export async function getAnimeDetails(id, isMal = false) {
-  const variables = isMal ? { idMal: parseInt(id) } : { id: parseInt(id) };
+  let finalId = id;
+  let finalIsMal = isMal;
+
+  // BUG FIX: If ID is a HiAnime slug (non-numeric), resolve it to an AniList ID first
+  if (id && isNaN(id) && !isMal) {
+    try {
+      console.log(`[Watch] Resolving slug to AniList ID: ${id}`);
+      const aniwatchData = await getAniwatchDetails(id);
+      if (aniwatchData?.ani_id) {
+        finalId = aniwatchData.ani_id;
+        console.log(`[Watch] Resolved ${id} -> AniList ID: ${finalId}`);
+      }
+    } catch (err) {
+      console.error("[Watch] Mapping resolution failed:", err);
+    }
+  }
+
+  const variables = finalIsMal ? { idMal: parseInt(finalId) } : { id: parseInt(finalId) };
+  
+  if (isNaN(variables.id) && !finalIsMal) {
+      console.error("[Watch] Aborting AniList query: ID is still non-numeric after resolution.");
+      return null;
+  }
+
   try {
     const { data } = await axios.post(`${PYTHON_API}/api/anilist/proxy`, {
       query: DETAIL_QUERY,
@@ -488,13 +525,13 @@ export async function getAnimeDetails(id, isMal = false) {
     });
 
     if (data.errors) {
-      console.error("AniList Detail Errors [ID:", id, "]:", data.errors);
+      console.error("AniList Detail Errors [ID:", finalId, "]:", data.errors);
       return null;
     }
 
     const media = data.data?.Media;
     if (!media) {
-      console.warn("AniList Detail: No media found for ID:", id);
+      console.warn("AniList Detail: No media found for ID:", finalId);
       return null;
     }
 
@@ -693,6 +730,19 @@ export async function checkDubAvailability(anilistId) {
     console.error("Dub check failed:", err.message);
     // Graceful fallback: assume sub exists and allow dub toggle
     return { hasSub: true, hasDub: true, subCount: 0, dubCount: 0 };
+  }
+}
+
+/**
+ * Fetch recently dubbed episodes from the native Python backend.
+ */
+export async function getRecentDubs() {
+  try {
+    const { data } = await axios.get(`${PYTHON_API}/api/python/recent-dub`);
+    return data;
+  } catch (err) {
+    console.error("Recent Dubs fetch failed:", err);
+    return { media: [] };
   }
 }
 

@@ -450,6 +450,57 @@ class AniwatchScraper:
 
     BASE = "https://aniwatchtv.to"
 
+    @cached("aniwatch:recent", ttl=600)
+    def get_recent_episodes(self, type="dub", limit=24):
+        """Fetch recently updated episodes across multiple pages to meet the limit."""
+        results = []
+        # Fetch top 3 pages to ensure enough dubbed results
+        for page in range(1, 4):
+            if len(results) >= limit:
+                break
+                
+            try:
+                html = http.get_html(f"{self.BASE}/recently-updated", params={"page": page})
+                soup = BeautifulSoup(html, "html.parser")
+                items = soup.select(".flw-item")
+                
+                for item in items:
+                    tick_dub = item.select_one(".tick-dub")
+                    if type == "dub" and not tick_dub:
+                        continue
+                        
+                    title_tag = item.select_one(".film-name a")
+                    poster_img = item.select_one(".film-poster img")
+                    
+                    if not title_tag:
+                        continue
+                        
+                    slug = str(title_tag.get("href", "")).replace("/watch/", "").lstrip("/")
+                    
+                    # Avoid duplicates across pages
+                    if any(r["id"] == slug for r in results):
+                        continue
+                        
+                    results.append({
+                        "id": slug,
+                        "title": {
+                            "romaji": title_tag.get_text(strip=True),
+                            "english": title_tag.get_text(strip=True)
+                        },
+                        "coverImage": {
+                            "large": poster_img.get("data-src") or poster_img.get("src") if poster_img else "",
+                            "extraLarge": poster_img.get("data-src") or poster_img.get("src") if poster_img else ""
+                        },
+                        "episodes": tick_dub.get_text(strip=True) if tick_dub else "?",
+                        "format": "TV",
+                        "status": "RELEASING"
+                    })
+            except Exception as e:
+                log.error("Aniwatch: Page %s fetch failed: %s", page, e)
+                break
+                
+        return results[:limit]
+
     @cached("aniwatch:search", ttl=300)
     def search(self, keyword):
         """Search and return all potential matches."""
@@ -493,7 +544,11 @@ class AniwatchScraper:
     @cached("aniwatch:info", ttl=1800)
     def get_info(self, aniwatch_id):
         try:
-            html = http.get_html(f"{self.BASE}/watch/anime-{aniwatch_id}")
+            # Handle both numeric IDs (anime-123) and pure slugs (renegade-immortal-18573)
+            slug = str(aniwatch_id)
+            url_path = f"anime-{slug}" if slug.isdigit() else slug
+            
+            html = http.get_html(f"{self.BASE}/watch/{url_path}")
             soup = BeautifulSoup(html, "html.parser")
             
             # 1. Description
@@ -761,6 +816,14 @@ def api_aniwatch_info(aniwatch_id):
     return {"error": "Not found"}, 404
 
 
+@app.route("/api/python/recent-dub", methods=["GET"])
+@api_response
+def api_python_recent_dub():
+    limit = request.args.get("limit", 24, type=int)
+    results = aniwatch.get_recent_episodes(type="dub", limit=limit)
+    return {"media": results}
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 #  API ROUTES — MALSync
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -793,7 +856,7 @@ def api_anilist_proxy():
         "https://graphql.anilist.co",
         json=payload,
         headers={"Content-Type": "application/json", "Accept": "application/json"},
-        timeout=10
+        timeout=20
     )
 
     # Robust response parsing

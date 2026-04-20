@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { META } from "@consumet/extensions";
+import { META, ANIME } from "@consumet/extensions";
 import process from "node:process";
 
 const app = express();
@@ -48,6 +48,34 @@ app.get("/api/check-dub/:anilistId", async (req, res) => {
       hasSub: true,
       hasDub: true,
     });
+  }
+});
+
+app.get("/api/recent-dub", async (req, res) => {
+  try {
+    const gogo = new ANIME.Gogoanime();
+    const data = await gogo.fetchRecentEpisodes(1, 2); // type 2 = Dub
+    
+    // Map Consumet results to AniList-like objects for frontend compatibility
+    const results = data.results.map(item => ({
+      id: item.id, // Consumet ID
+      title: { 
+        romaji: item.title,
+        english: item.title 
+      },
+      coverImage: {
+        large: item.image,
+        extraLarge: item.image
+      },
+      episodes: item.episodeNumber,
+      format: "TV",
+      status: "RELEASING"
+    }));
+
+    res.json({ media: results });
+  } catch (err) {
+    console.error("Consumet recent-dub error:", err);
+    res.status(500).json({ error: "Failed to fetch recent dubs" });
   }
 });
 

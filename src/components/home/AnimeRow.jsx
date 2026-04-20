@@ -2,23 +2,43 @@ import AnimeCard from "../common/AnimeCard";
 import SkeletonCard from "../common/SkeletonCard";
 import { ChevronDown } from "lucide-react";
 
-export default function AnimeRow({ title, data, isLoading, limit = 6 }) {
+export default function AnimeRow({ title, data, isLoading, limit = 6, tabs = [], activeTab = "", onTabChange }) {
   const loading = isLoading || !data || data.length === 0;
 
   return (
     <section className="mt-8 max-w-[1720px] mx-auto px-2 md:px-4 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between mb-5">
-        <div className="flex items-center gap-3">
-          {/* Vertical Accent Bar */}
-          <div className="w-[3.5px] h-6 bg-red-600 rounded-full" />
-          <h2 className="text-xl md:text-2xl font-bold text-white uppercase leading-none tracking-tighter">
-            {title}
-          </h2>
-          {/* Red dropdown arrow icon */}
-          <span className="bg-red-600/10 text-red-600 w-6 h-6 rounded-full flex items-center justify-center transition-colors hover:bg-red-600 hover:text-white cursor-pointer ml-1">
-            <ChevronDown size={14} strokeWidth={3} />
-          </span>
+      <div className="flex flex-wrap items-center justify-between mb-5 gap-y-4">
+        <div className="flex items-center flex-wrap gap-x-6 gap-y-2">
+          <div className="flex items-center gap-3">
+            {/* Vertical Accent Bar */}
+            <div className="w-[3.5px] h-6 bg-red-600 rounded-full" />
+            <h2 className="text-xl md:text-2xl font-bold text-white uppercase leading-none tracking-tighter shrink-0">
+              {title}
+            </h2>
+          </div>
+
+          {/* Categories / Tabs */}
+          {tabs && tabs.length > 0 && (
+            <div className="flex items-center gap-3 md:gap-5 overflow-x-auto scrollbar-hide py-1">
+              {tabs.map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => onTabChange?.(tab)}
+                  className={`text-[12px] md:text-[14px] font-bold transition-all whitespace-nowrap px-2 py-1 rounded relative ${
+                    activeTab === tab
+                      ? "text-white bg-white/10"
+                      : "text-[#999] hover:text-white"
+                  }`}
+                >
+                  {tab}
+                  {activeTab === tab && (
+                    <div className="absolute -bottom-1 left-0 w-full h-[2px] bg-red-600 rounded-full" />
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
