@@ -52,12 +52,12 @@ export default function Home() {
         const variables = {
           page: 1,
           perPage: 24,
-          sort: activeLatestTab === "China" 
-                ? ["TRENDING_DESC", "POPULARITY_DESC"] 
-                : ["UPDATED_AT_DESC"],
+          sort: activeLatestTab === "China"
+            ? ["TRENDING_DESC", "POPULARITY_DESC"]
+            : ["UPDATED_AT_DESC"],
           isAdult: false,
         };
-        
+
         if (activeLatestTab === "China") {
           variables.country = "CN";
         }
@@ -84,7 +84,8 @@ export default function Home() {
       <Navbar />
       <Hero bgImages={bgImages} />
 
-      <div className="flex flex-col gap-y-16 mt-8 mb-20">
+      {/* Main Content Sections with balanced spacing */}
+      <div className="flex flex-col gap-y-12 md:gap-y-14 mt-10 mb-20 px-1 md:px-2">
         {/* Latest Updates */}
         <AnimeRow 
           title="LATEST UPDATES" 
