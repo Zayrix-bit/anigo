@@ -1,5 +1,4 @@
-// ANTIGRAVITY SYNC v5 - AUTO-FIX REVERTED CODE
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getBrowseAnime, getBrowseAnimeMAL } from "../services/api";
@@ -7,117 +6,90 @@ import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
 import AnimeCard from "../components/common/AnimeCard";
 import SkeletonCard from "../components/common/SkeletonCard";
-import { Search, ChevronDown, ArrowDownUp, Filter, ChevronRight, ChevronLeft, Check, X, ChevronsRight, ChevronsLeft, Feather, Target, Calendar } from "lucide-react";
+import { Search, ChevronDown, Filter, Check, X, RefreshCw, Trash2, ArrowRight } from "lucide-react";
 import { ALL_GENRES, OFFICIAL_GENRES, GENRE_MAP } from "../constants/genres";
 import Pagination from "../components/common/Pagination";
 
 export default function Browse() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const [openDropdown, setOpenDropdown] = useState(null);
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
 
+  // 1. Filter derivation from URL
   const filters = useMemo(() => {
     const genreStr = searchParams.get("genre") || "";
     const excludeStr = searchParams.get("exclude") || "";
     const formatParams = searchParams.getAll("format");
 
+    const include = genreStr ? genreStr.split(",").filter(Boolean) : [];
+    const exclude = excludeStr ? excludeStr.split(",").filter(Boolean) : [];
+
     return {
       search: searchParams.get("search") || "",
-      include: genreStr ? genreStr.split(",").filter(Boolean) : [],
-      exclude: excludeStr ? excludeStr.split(",").filter(Boolean) : [],
+      include,
+      exclude,
+      genres: include,
       formats: formatParams,
       status: searchParams.get("status") || "",
       sort: searchParams.get("sort") || "TRENDING_DESC",
-      year: searchParams.get("year") || null,
-      season: searchParams.get("season") || null,
+      year: searchParams.get("year") || "",
+      season: searchParams.get("season") || "",
       country: searchParams.get("country") || "",
-      rating: searchParams.get("rating") || null,
-      language: searchParams.getAll("language"),
-      excludeMyList: searchParams.get("excludeMyList") === "true",
+      rating: searchParams.get("rating") || "",
+      language: searchParams.get("language") || "",
+      excludeMyList: searchParams.get("onList") === "false",
+      page: parseInt(searchParams.get("page") || "1"),
     };
   }, [searchParams]);
 
-  const [searchInput, setSearchInput] = useState(searchParams.get("search") || "");
-  const [page, setPage] = useState(() => {
-    const p = searchParams.get("page");
-    return p ? parseInt(p) : 1;
-  });
+  const [searchInput, setSearchInput] = useState(filters.search);
+  const [prevFiltersSearch, setPrevFiltersSearch] = useState(filters.search);
 
-  // CORRECT WAY: Refs and Hooks must be at the top level, never nested.
-  const emptyPageCount = useRef(0);
-
-  const [prevUrlSearch, setPrevUrlSearch] = useState(searchParams.get("search") || "");
-  const [prevUrlPage, setPrevUrlPage] = useState(searchParams.get("page") || "1");
-
-  const currentUrlSearch = searchParams.get("search") || "";
-  const currentUrlPage = searchParams.get("page") || "1";
-
-  if (currentUrlSearch !== prevUrlSearch) {
-    setPrevUrlSearch(currentUrlSearch);
-    setSearchInput(currentUrlSearch);
+  // Sync search input if URL changes (e.g. back button), doing it during render to avoid cascading effects
+  if (filters.search !== prevFiltersSearch) {
+    setPrevFiltersSearch(filters.search);
+    setSearchInput(filters.search);
   }
-
-  if (currentUrlPage !== prevUrlPage) {
-    setPrevUrlPage(currentUrlPage);
-    setPage(parseInt(currentUrlPage));
-  }
-
-  const handlePageChange = (newPage) => {
-    setPage(newPage);
-    const newParams = new URLSearchParams(searchParams);
-    newParams.set("page", newPage);
-    setSearchParams(newParams);
-    if (typeof window !== "undefined") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  };
-
-  const [openDropdown, setOpenDropdown] = useState(null);
+  const consecutiveEmptyPages = useRef(0);
+  const isAutoPaging = useRef(false);
 
   useEffect(() => {
-    const fromUrl = searchParams.get("search") || "";
-    if (searchInput === fromUrl) { return; }
+    const timer = setTimeout(() => setIsLoaded(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
 
+  useEffect(() => {
+    if (searchInput === filters.search) return;
     const timer = setTimeout(() => {
       setSearchParams(prev => {
         const next = new URLSearchParams(prev);
-        if (!searchInput) { next.delete("search"); }
-        else { next.set("search", searchInput); }
+        if (!searchInput) next.delete("search");
+        else next.set("search", searchInput);
         next.set("page", "1");
         return next;
-      });
-    }, 500);
-    return () => { clearTimeout(timer); };
-  }, [searchInput]);
+      }, { replace: true });
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [searchInput, filters.search, setSearchParams]);
 
-  useEffect(() => {
-    if (openDropdown && window.innerWidth < 768) {
-      document.body.style.overflow = "hidden";
-      document.body.style.touchAction = "none";
-    } else {
-      document.body.style.overflow = "unset";
-      document.body.style.touchAction = "auto";
+  const handlePageChange = useCallback((newPage) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set("page", newPage.toString());
+      return next;
+    });
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
-    return () => {
-      document.body.style.overflow = "unset";
-      document.body.style.touchAction = "auto";
-    };
-  }, [openDropdown]);
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (!e.target.closest(".filter-dropdown-container")) {
-        setOpenDropdown(null);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => { document.removeEventListener("mousedown", handleClickOutside); };
-  }, []);
+  }, [setSearchParams]);
 
   const { data: result = { media: [], pageInfo: { total: 0 } }, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ["browse", page, filters.search, filters.formats, filters.include, filters.exclude, filters.status, filters.sort, filters.year, filters.season, filters.country, filters.rating],
+    queryKey: ["browse", filters],
     queryFn: () => {
       if (filters.include.includes("Avant Garde")) {
         return getBrowseAnimeMAL({
-          page: page,
+          page: filters.page,
           genres: filters.include,
           search: filters.search,
           status: filters.status,
@@ -126,110 +98,84 @@ export default function Browse() {
       }
 
       const vars = {
-        page: page,
-        perPage: 54,
+        page: filters.page,
+        perPage: 48,
         sort: [filters.sort],
       };
-      if (filters.search && filters.search.trim()) { vars.search = filters.search; }
-      if (filters.formats && filters.formats.length > 0) { vars.format_in = filters.formats; }
+      
+      if (filters.search) vars.search = filters.search;
+      if (filters.formats.length > 0) vars.format_in = filters.formats;
 
-      if (filters.include && filters.include.length > 0) {
+      if (filters.include.length > 0) {
         const gen_in = [];
         const t_in = [];
         filters.include.forEach(g => {
           const mapped = GENRE_MAP[g] || g;
-          if (OFFICIAL_GENRES.includes(mapped)) { gen_in.push(mapped); }
-          else { t_in.push(mapped); }
+          if (OFFICIAL_GENRES.includes(mapped)) gen_in.push(mapped);
+          else t_in.push(mapped);
         });
-        if (gen_in.length > 0) { vars.genre_in = gen_in; }
-        if (t_in.length > 0) { vars.tag_in = t_in; }
+        if (gen_in.length > 0) vars.genre_in = gen_in;
+        if (t_in.length > 0) vars.tag_in = t_in;
       }
 
-      if (filters.status) { vars.status = filters.status; }
-      if (filters.year) { vars.seasonYear = parseInt(filters.year); }
-      if (filters.season) { vars.season = filters.season; }
-      if (filters.country) { vars.country = filters.country; }
-      if (filters.rating) { vars.averageScore_greater = parseInt(filters.rating); }
+      if (filters.status) vars.status = filters.status;
+      if (filters.year) vars.seasonYear = parseInt(filters.year);
+      if (filters.season) vars.season = filters.season;
+      if (filters.country) vars.country = filters.country;
+      if (filters.rating) vars.averageScore_greater = parseInt(filters.rating);
 
       return getBrowseAnime(vars);
     },
-    enabled: true,
+    keepPreviousData: true,
+    staleTime: 1000 * 60 * 5,
   });
 
   const animeList = useMemo(() => {
     const rawList = result.media || [];
-    if (filters.include.length === 0 && filters.exclude.length === 0) { return rawList; }
-
+    if (filters.include.length === 0 && filters.exclude.length === 0) return rawList;
     return rawList.filter(anime => {
-      const animeGenres = anime.genres || [];
-      const animeTags = (anime.tags || []).map(t => t.name);
-      const allLabels = [...animeGenres, ...animeTags];
-
-      const isExcl = filters.exclude.some(excl => {
-        const mappedExcl = GENRE_MAP[excl] || excl;
-        return allLabels.includes(mappedExcl);
-      });
-      if (isExcl) { return false; }
-
+      const allLabels = [...(anime.genres || []), ...(anime.tags || []).map(t => t.name)];
+      if (filters.exclude.some(ex => allLabels.includes(GENRE_MAP[ex] || ex))) return false;
       if (filters.include.length > 0) {
-        const isIncl = filters.include.some(incl => {
-          const mappedIncl = GENRE_MAP[incl] || incl;
-          return allLabels.includes(mappedIncl);
-        });
-        if (!isIncl) { return false; }
+        if (!filters.include.some(inc => allLabels.includes(GENRE_MAP[inc] || inc))) return false;
       }
-
       return true;
     });
   }, [result.media, filters.include, filters.exclude]);
 
-  const hasNextPage = (result.pageInfo && result.pageInfo.hasNextPage) || false;
+  const hasNextPage = result.pageInfo?.hasNextPage || false;
 
-  // Single, stable effect for auto-pagination and safety breaks
   useEffect(() => {
-    if (!isLoading && !isFetching) {
-      if (animeList.length > 0) {
-        if (emptyPageCount.current !== 0) {
-          emptyPageCount.current = 0;
-        }
-      } else if (hasNextPage) {
-        if (emptyPageCount.current >= 3) {
-          console.warn("[Browse] Safety break: Stopped auto-jump after 3 empty pages.");
-          return;
-        }
-        emptyPageCount.current += 1;
-        handlePageChange(page + 1);
+    if (isLoading || isFetching) return;
+    if (animeList.length > 0) {
+      consecutiveEmptyPages.current = 0;
+      isAutoPaging.current = false;
+    } else if (hasNextPage) {
+      if (consecutiveEmptyPages.current >= 3) {
+        isAutoPaging.current = false;
+        return;
       }
+      consecutiveEmptyPages.current += 1;
+      isAutoPaging.current = true;
+      const jumpId = setTimeout(() => handlePageChange(filters.page + 1), 200);
+      return () => clearTimeout(jumpId);
     }
-  }, [animeList, isLoading, isFetching, hasNextPage, page]);
+  }, [animeList.length, isLoading, isFetching, hasNextPage, filters.page, handlePageChange]);
 
   const toggleGenre = (genre) => {
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
-      const genreVal = next.get("genre");
-      const excludeVal = next.get("exclude");
-      const include = genreVal ? genreVal.split(",").filter(Boolean) : [];
-      const exclude = excludeVal ? excludeVal.split(",").filter(Boolean) : [];
-
+      const include = next.get("genre")?.split(",").filter(Boolean) || [];
+      const exclude = next.get("exclude")?.split(",").filter(Boolean) || [];
       if (include.includes(genre)) {
-        const newInclude = include.filter(g => g !== genre);
-        const newExclude = [...exclude, genre];
-        if (newInclude.length > 0) {
-          next.set("genre", newInclude.join(","));
-        } else {
-          next.delete("genre");
-        }
-        next.set("exclude", newExclude.join(","));
+        const nextInclude = include.filter(g => g !== genre);
+        if (nextInclude.length > 0) next.set("genre", nextInclude.join(",")); else next.delete("genre");
+        next.set("exclude", [...exclude, genre].join(","));
       } else if (exclude.includes(genre)) {
-        const newExclude = exclude.filter(g => g !== genre);
-        if (newExclude.length > 0) {
-          next.set("exclude", newExclude.join(","));
-        } else {
-          next.delete("exclude");
-        }
+        const nextExclude = exclude.filter(g => g !== genre);
+        if (nextExclude.length > 0) next.set("exclude", nextExclude.join(",")); else next.delete("exclude");
       } else {
-        const newInclude = [...include, genre];
-        next.set("genre", newInclude.join(","));
+        next.set("genre", [...include, genre].join(","));
       }
       next.set("page", "1");
       return next;
@@ -239,154 +185,406 @@ export default function Browse() {
   const toggleFilter = (key, value) => {
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
-      var urlKey = key;
-      if (key === "formats") { urlKey = "format"; }
-      else if (key === "language") { urlKey = "language"; }
-      const currentValues = next.getAll(urlKey);
-      const isSelected = currentValues.includes(value);
-      const nextValues = isSelected ? currentValues.filter(v => v !== value) : [...currentValues, value];
+      const urlKey = (key === "formats") ? "format" : key;
+      const current = next.getAll(urlKey);
+      const updated = current.includes(value) ? current.filter(v => v !== value) : [...current, value];
       next.delete(urlKey);
-      nextValues.forEach(v => { next.append(urlKey, v); });
+      updated.forEach(v => next.append(urlKey, v));
       next.set("page", "1");
       return next;
     });
   };
 
-  const handleSingleSelect = (key, value) => {
+  const setSingleFilter = (key, value) => {
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
-      if (!value) { next.delete(key); }
-      else { next.set(key, value); }
+      if (!value) next.delete(key); else next.set(key, value);
       next.set("page", "1");
       return next;
     });
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev);
-      if (!searchInput) { next.delete("search"); }
-      else { next.set("search", searchInput); }
-      next.set("page", "1");
-      return next;
-    });
+  const handleReset = () => {
+    setSearchParams(new URLSearchParams());
+    setSearchInput("");
+    setOpenDropdown(null);
+    setIsMobileFilterOpen(false);
+  };
+
+  const handleShuffleSort = () => {
+    const sorts = ["TRENDING_DESC", "POPULARITY_DESC", "SCORE_DESC", "START_DATE_DESC"];
+    const currentIdx = sorts.indexOf(filters.sort);
+    const nextSort = sorts[(currentIdx + 1) % sorts.length];
+    setSingleFilter("sort", nextSort);
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div className="min-h-screen bg-[#060606] text-white selection:bg-red-500/30 font-sans">
       <Navbar />
-      <main className="max-w-[1720px] mx-auto px-2 md:px-4 pt-24 pb-12">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-[14px] font-semibold uppercase tracking-[0.2em] text-white opacity-60">BROWSER</h1>
-          {!isLoading && (
-            <span className="text-[10px] font-bold text-white/40 bg-white/[0.03] px-2 py-1 rounded border border-white/5 uppercase tracking-wider">
-              {result.pageInfo && result.pageInfo.total ? result.pageInfo.total.toLocaleString() : 0} Anime
-            </span>
+      
+      {/* Mobile Top Header */}
+      <header className="fixed top-0 left-0 right-0 z-[60] bg-[#0a0a0a]/90 backdrop-blur-xl border-b border-white/5 md:hidden">
+        <div className="px-5 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Filter size={14} className="text-red-500" />
+            <h1 className="text-[12px] font-bold tracking-[0.2em] text-white/90 uppercase">Browse</h1>
+          </div>
+          <button 
+            onClick={() => setIsMobileFilterOpen(true)}
+            className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center active:scale-95 transition-all"
+          >
+            <div className="w-1.5 h-1.5 bg-red-600 rounded-full" />
+          </button>
+        </div>
+      </header>
+
+      <main className="container max-w-[1720px] mx-auto px-2 md:px-4 pt-16 md:pt-20 pb-20">
+        
+        {/* Page Head - Ultra Compact */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-1 h-5 bg-red-600 rounded-full shrink-0" />
+            <h2 className="text-2xl font-bold tracking-tighter">Browse</h2>
+          </div>
+        </div>
+
+        {/* Desktop Interface - Ultra Compact Margin */}
+        <div className="mb-6">
+          <div className="hidden md:flex flex-col gap-6">
+            <div className="flex h-[52px] bg-[#0d0d0d] border border-white/10 rounded-xl overflow-visible shadow-2xl relative">
+              <div className="flex-[2.5] relative flex items-center border-r border-white/5">
+                <Search className="absolute left-6 w-4 h-4 text-white/20" />
+                <input 
+                  type="text" 
+                  placeholder="Universal Search..." 
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className="w-full h-full bg-transparent pl-14 pr-12 text-[14px] text-white font-medium placeholder-white/10 outline-none"
+                />
+                {searchInput && (
+                  <button onClick={() => setSearchInput("")} className="absolute right-4 w-6 h-6 flex items-center justify-center hover:bg-white/5 rounded-full transition-colors">
+                    <X size={12} className="text-white/40" />
+                  </button>
+                )}
+              </div>
+
+              {[
+                { label: "Types", key: "type", active: filters.formats.length > 0 },
+                { label: "Genres", key: "genre", active: filters.genres.length > 0 },
+                { label: "Status", key: "status", active: !!filters.status },
+                { label: "Advanced", key: "advanced", active: filters.year || filters.season || filters.rating }
+              ].map(dd => (
+                <div key={dd.key} className="flex-1 relative flex items-center border-r border-white/5 group">
+                  <button 
+                    onClick={() => setOpenDropdown(openDropdown === dd.key ? null : dd.key)} 
+                    className={`w-full h-full flex items-center justify-between px-6 transition-all hover:bg-white/[0.02] ${openDropdown === dd.key ? 'bg-white/[0.03]' : ''}`}
+                  >
+                    <span className={`text-[11px] uppercase tracking-[0.2em] font-bold transition-colors ${dd.active ? 'text-red-500' : 'text-white/40'}`}>
+                      {dd.label}
+                    </span>
+                    <ChevronDown size={12} className={`text-white/20 transition-transform duration-300 ${openDropdown === dd.key ? 'rotate-180 text-red-500' : ''}`} />
+                  </button>
+
+                  {openDropdown === dd.key && (
+                    <>
+                      <div className="fixed inset-0 z-[90]" onClick={() => setOpenDropdown(null)} />
+                      <div className={`absolute top-[calc(100%+12px)] bg-[#0d0d0d] border border-white/10 rounded-2xl shadow-[0_30px_60px_-12px_rgba(0,0,0,0.8)] p-8 z-[100] ${
+                        dd.key === 'genre' ? 'w-[800px] left-1/2 -translate-x-1/2' : 
+                        dd.key === 'advanced' ? 'w-[700px] right-0' : 'w-64 left-0'
+                      }`}>
+                        
+                        {dd.key === 'type' && (
+                          <div className="grid grid-cols-1 gap-1">
+                            {["TV", "MOVIE", "OVA", "ONA", "SPECIAL", "MUSIC"].map(f => (
+                              <button key={f} onClick={() => toggleFilter('formats', f)} className="flex items-center justify-between w-full p-3 rounded-xl hover:bg-white/5 transition-all group">
+                                <span className={`text-[14px] font-medium ${filters.formats.includes(f) ? 'text-red-500' : 'text-white/50 group-hover:text-white'}`}>{f}</span>
+                                {filters.formats.includes(f) && <Check className="w-4 h-4 text-red-500" />}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {dd.key === 'status' && (
+                          <div className="grid grid-cols-1 gap-1">
+                            {[{l:"Any Status",v:""}, {l:"Releasing",v:"RELEASING"}, {l:"Finished",v:"FINISHED"}, {l:"Upcoming",v:"NOT_YET_RELEASED"}].map(s => (
+                              <button key={s.v} onClick={() => { setSingleFilter('status', s.v); setOpenDropdown(null); }} className="flex items-center justify-between w-full p-3 rounded-xl hover:bg-white/5 transition-all group">
+                                <span className={`text-[14px] font-medium ${filters.status === s.v ? 'text-red-500' : 'text-white/50 group-hover:text-white'}`}>{s.l}</span>
+                                {filters.status === s.v && <Check className="w-4 h-4 text-red-500" />}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {dd.key === 'genre' && (
+                          <div className="grid grid-cols-4 gap-x-10 gap-y-4">
+                            {ALL_GENRES.map(g => {
+                              const inc = filters.include.includes(g);
+                              const exc = filters.exclude.includes(g);
+                              return (
+                                <button key={g} onClick={() => toggleGenre(g)} className="flex items-center gap-3.5 group text-left">
+                                  <div className={`w-4 h-4 border rounded-sm flex items-center justify-center shrink-0 transition-all ${inc ? 'bg-red-600 border-red-600 shadow-[0_0_10px_rgba(220,38,38,0.4)]' : exc ? 'bg-white/10 border-white/20' : 'bg-transparent border-white/20 group-hover:border-white/40'}`}>
+                                    {inc && <Check className="w-2.5 h-2.5 text-white" strokeWidth={4} />}
+                                    {exc && <X className="w-2.5 h-2.5 text-red-500" strokeWidth={4} />}
+                                  </div>
+                                  <span className={`text-[13px] font-medium leading-none transition-all ${inc ? 'text-white' : exc ? 'text-white/20 line-through' : 'text-white/50 group-hover:text-white'}`}>{g}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {dd.key === 'advanced' && (
+                          <div className="space-y-10">
+                            <div className="grid grid-cols-3 gap-8">
+                              <div className="space-y-3">
+                                <label className="text-[10px] text-white/30 uppercase tracking-[0.3em] font-bold pl-1">Year</label>
+                                <select value={filters.year} onChange={(e) => setSingleFilter("year", e.target.value)} className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-[14px] font-medium outline-none hover:border-white/20 transition-all cursor-pointer">
+                                  <option value="" className="bg-[#0d0d0d]">Any Year</option>
+                                  {Array.from({length: 45}, (_, i) => 2026-i).map(y => <option key={y} value={y} className="bg-[#0d0d0d]">{y}</option>)}
+                                </select>
+                              </div>
+                              <div className="space-y-3">
+                                <label className="text-[10px] text-white/30 uppercase tracking-[0.3em] font-bold pl-1">Season</label>
+                                <select value={filters.season} onChange={(e) => setSingleFilter("season", e.target.value)} className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-[14px] font-medium outline-none hover:border-white/20 transition-all cursor-pointer">
+                                  <option value="" className="bg-[#0d0d0d]">Any Season</option>
+                                  {["WINTER", "SPRING", "SUMMER", "FALL"].map(s => <option key={s} value={s} className="bg-[#0d0d0d]">{s}</option>)}
+                                </select>
+                              </div>
+                              <div className="space-y-3">
+                                <label className="text-[10px] text-white/30 uppercase tracking-[0.3em] font-bold pl-1">Score</label>
+                                <select value={filters.rating} onChange={(e) => setSingleFilter("rating", e.target.value)} className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-[14px] font-medium outline-none hover:border-white/20 transition-all cursor-pointer">
+                                  <option value="" className="bg-[#0d0d0d]">Score</option>
+                                  {[9, 8, 7, 6, 5, 4, 3, 2, 1].map(r => <option key={r} value={r*10} className="bg-[#0d0d0d]">{r}0% +</option>)}
+                                </select>
+                              </div>
+                            </div>
+                            <div className="pt-8 border-t border-white/5 flex items-center justify-between">
+                              <button onClick={() => setSingleFilter("onList", filters.excludeMyList ? "" : "false")} className="flex items-center gap-4 group">
+                                <div className={`w-5 h-5 border rounded-md flex items-center justify-center transition-all ${filters.excludeMyList ? 'bg-red-600 border-red-600' : 'border-white/20 group-hover:border-white/40'}`}>
+                                  {filters.excludeMyList && <Check className="w-3.5 h-3.5 text-white" />}
+                                </div>
+                                <span className="text-[13px] font-medium text-white/40 group-hover:text-white transition-colors">Exclude items from my list</span>
+                              </button>
+                              <div className="flex items-center gap-4">
+                                <button onClick={handleReset} className="px-6 py-2.5 text-[11px] uppercase tracking-widest font-bold text-white/40 hover:text-white transition-colors">Reset</button>
+                                <button onClick={() => setOpenDropdown(null)} className="px-8 py-2.5 bg-red-600 text-white text-[11px] uppercase font-bold tracking-widest rounded-full hover:bg-red-700 transition-all shadow-lg shadow-red-600/20">Close</button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+
+              <button 
+                onClick={handleShuffleSort}
+                className="w-16 h-full flex items-center justify-center transition-all hover:bg-white/[0.04] text-white/20 hover:text-red-500 border-r border-white/5"
+              >
+                <RefreshCw size={16} className={isFetching ? 'animate-spin' : ''} />
+              </button>
+
+              <button 
+                onClick={() => refetch()}
+                className="px-10 bg-red-600 text-white flex items-center gap-4 rounded-r-xl group active:scale-95 transition-all overflow-hidden relative"
+              >
+                <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500" />
+                <span className="text-[13px] font-bold uppercase tracking-[0.2em] relative z-10">Sync</span>
+                <ArrowRight size={16} className="relative z-10 group-hover:translate-x-1 transition-transform" />
+              </button>
+            </div>
+
+            {/* Precision Tokens */}
+            <div className="flex flex-wrap gap-2 pt-2">
+              {(filters.include.length + filters.exclude.length + filters.formats.length + (filters.status ? 1 : 0) + (filters.year ? 1 : 0)) > 0 && (
+                <>
+                  <button onClick={handleReset} className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 hover:border-red-500/50 hover:bg-red-500/5 text-white/40 hover:text-red-500 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all mr-3">
+                    <Trash2 size={11} /> Reset All
+                  </button>
+                  {filters.include.map(g => (
+                    <div key={g} className="group flex items-center gap-2 px-4 py-2 bg-red-600/10 border border-red-600/30 rounded-full text-[10px] text-red-500 font-bold uppercase tracking-widest transition-all">
+                      {g} 
+                      <X size={11} className="cursor-pointer text-red-500/50 group-hover:text-red-500" onClick={() => toggleGenre(g)} />
+                    </div>
+                  ))}
+                  {filters.exclude.map(g => (
+                    <div key={g} className="group flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-[10px] text-white/30 font-bold uppercase tracking-widest">
+                      <span className="line-through">{g}</span> 
+                      <X size={11} className="cursor-pointer text-white/20 group-hover:text-white" onClick={() => toggleGenre(g)} />
+                    </div>
+                  ))}
+                  {filters.formats.map(f => (
+                    <div key={f} className="group flex items-center gap-2 px-4 py-2 bg-blue-600/10 border border-blue-600/30 rounded-full text-[10px] text-blue-500 font-bold uppercase tracking-widest">
+                      {f} 
+                      <X size={11} className="cursor-pointer text-blue-500/50 group-hover:text-blue-500" onClick={() => toggleFilter('formats', f)} />
+                    </div>
+                  ))}
+                  {filters.status && (
+                    <div className="group flex items-center gap-2 px-4 py-2 bg-green-600/10 border border-green-600/30 rounded-full text-[10px] text-green-500 font-bold uppercase tracking-widest">
+                      {filters.status.replace('_', ' ')}
+                      <X size={11} className="cursor-pointer text-green-500/50 group-hover:text-green-500" onClick={() => setSingleFilter('status', '')} />
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Mobile UI Bar */}
+          <div className="md:hidden flex gap-3">
+            <div className="flex-1 relative h-14 bg-[#121212] border border-white/5 rounded-2xl shadow-inner ring-1 ring-white/5 px-2 flex items-center">
+              <Search className="ml-4 w-4 h-4 text-white/20" />
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="flex-1 bg-transparent px-4 text-sm font-medium placeholder-white/20 outline-none"
+              />
+            </div>
+            <button 
+              onClick={() => setIsMobileFilterOpen(true)}
+              className="w-14 h-14 flex items-center justify-center bg-red-600 rounded-2xl shadow-xl shadow-red-600/20 active:scale-95 transition-all outline-none"
+            >
+              <Filter className="w-5 h-5 text-white" />
+            </button>
+          </div>
+        </div>
+
+        {/* Results */}
+        <div className="relative min-h-[500px]">
+          {(isLoading || (isFetching && animeList.length === 0)) ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-x-5 gap-y-10 opacity-40">
+              {Array.from({ length: 48 }).map((_, i) => <SkeletonCard key={i} />)}
+            </div>
+          ) : animeList.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-x-5 gap-y-10">
+              {animeList.map(anime => <AnimeCard key={anime.id} anime={anime} />)}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-48 text-center">
+              <div className="w-28 h-28 bg-white/5 rounded-full flex items-center justify-center mb-10 shadow-inner group">
+                <Search size={32} className="text-white/10 group-hover:text-red-500 transition-colors" />
+              </div>
+              <h3 className="text-3xl font-bold tracking-tight mb-4">No results found</h3>
+              <p className="text-white/40 max-w-sm text-sm mb-12 leading-relaxed font-medium">We couldn't find anything matching your exact filter setup. Try relaxing your constraints.</p>
+              <button 
+                onClick={handleReset} 
+                className="px-12 py-4 bg-red-600 hover:bg-red-700 text-white text-[12px] font-bold uppercase tracking-[0.3em] rounded-full transition-all shadow-2xl shadow-red-600/30 active:scale-95"
+              >
+                Clear all filters
+              </button>
+            </div>
           )}
         </div>
 
-        <form onSubmit={handleSubmit} className="hidden md:flex items-stretch mb-10 bg-[#121212] border border-white/5 rounded-[4px] h-10 relative filter-dropdown-container">
-          <div className="relative flex-[1.5] border-r border-white/5 group">
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              className="w-full h-full bg-transparent px-3 text-[12px] text-white/50 placeholder-white/20 outline-none"
-            />
-            <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/20 w-3 h-3" />
-          </div>
-
-          <div className="relative flex-1 border-r border-white/5">
-            <button type="button" onClick={() => { setOpenDropdown(openDropdown === "type" ? null : "type"); }} className="w-full h-full flex items-center justify-between px-3 text-[12px] text-white/40">
-              <span className="truncate">{filters.formats.length > 0 ? "Type (" + filters.formats.length + ")" : "Type"}</span>
-              <ChevronDown className="w-3 h-3 text-white/20" />
-            </button>
-            {openDropdown === "type" && (
-              <div className="absolute top-[44px] left-0 w-48 bg-[#121212] border border-white/5 rounded-[4px] shadow-2xl p-3 z-[100]">
-                {["MOVIE", "TV", "OVA", "ONA", "SPECIAL", "MUSIC"].map(format => (
-                  <button key={format} type="button" onClick={() => { toggleFilter("formats", format); }} className="flex items-center gap-3 w-full py-1 text-[12px] text-gray-400 hover:text-white">
-                    <div className={"w-3.5 h-3.5 border rounded-[2px] " + (filters.formats.includes(format) ? "bg-white border-white" : "border-white/20")} />
-                    {format}
-                  </button>
-                ))}
+        {/* Improved Mobile Drawer */}
+        {isMobileFilterOpen && (
+          <div className="fixed inset-0 z-[1000] md:hidden">
+            <div className="absolute inset-0 bg-black/95 backdrop-blur-md transition-opacity" onClick={() => setIsMobileFilterOpen(false)} />
+            <div className="absolute bottom-0 left-0 right-0 max-h-[94vh] bg-[#0d0d0d] border-t border-white/10 rounded-t-[48px] p-8 pb-12 overflow-y-auto shadow-[0_-20px_60px_rgba(0,0,0,0.8)]">
+              <div className="w-16 h-1 bg-white/10 rounded-full mx-auto mb-12" />
+              
+              <div className="flex items-center justify-between mb-12 px-2">
+                <div className="space-y-1">
+                  <h3 className="text-3xl font-bold tracking-tight">Browse</h3>
+                  <p className="text-red-500 text-[10px] font-bold uppercase tracking-[0.4em]">Personalize</p>
+                </div>
+                <button 
+                  onClick={() => setIsMobileFilterOpen(false)} 
+                  className="w-12 h-12 flex items-center justify-center bg-white/5 rounded-2xl active:scale-90 transition-all border border-white/5"
+                >
+                  <X size={20} className="text-white/60" />
+                </button>
               </div>
-            )}
-          </div>
 
-          <div className="relative flex-1 border-r border-white/5">
-            <button type="button" onClick={() => { setOpenDropdown(openDropdown === "genre" ? null : "genre"); }} className="w-full h-full flex items-center justify-between px-3 text-[12px] text-white/40">
-              <span className="truncate">{(filters.include.length + filters.exclude.length > 0) ? "Genres (" + (filters.include.length + filters.exclude.length) + ")" : "Genres"}</span>
-              <ChevronDown className="w-3 h-3 text-white/20" />
-            </button>
-            {openDropdown === "genre" && (
-              <div className="absolute top-[44px] left-0 w-[650px] bg-[#121212] border border-white/5 rounded-[4px] shadow-2xl p-4 z-[100]">
-                <div className="grid grid-cols-4 gap-x-4 gap-y-2">
-                  {ALL_GENRES.map(g => (
-                    <button key={g} type="button" onClick={() => { toggleGenre(g); }} className="flex items-center gap-2 py-1 text-[12px]">
-                      <div className={"w-3 h-3 border rounded-sm " + (filters.include.includes(g) ? "bg-red-600 border-red-600" : filters.exclude.includes(g) ? "bg-white/10 border-white/30" : "border-white/20")} />
-                      <span className={filters.exclude.includes(g) ? "text-white/30 line-through" : "text-white/60"}>{g}</span>
-                    </button>
-                  ))}
+              <div className="flex flex-col gap-12">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between px-2">
+                    <label className="text-[11px] font-bold text-white/30 uppercase tracking-[0.3em]">Status</label>
+                    {filters.status && <button onClick={() => setSingleFilter('status', '')} className="text-[9px] font-bold text-red-500 uppercase tracking-widest">Reset</button>}
+                  </div>
+                  <div className="flex flex-wrap gap-2.5">
+                    {[{l:"All",v:""}, {l:"Airing",v:"RELEASING"}, {l:"Finished",v:"FINISHED"}, {l:"Soon",v:"NOT_YET_RELEASED"}].map(s => (
+                      <button 
+                        key={s.v} 
+                        onClick={() => setSingleFilter('status', s.v)} 
+                        className={`flex-1 min-w-[80px] h-12 rounded-2xl text-xs font-bold border transition-all duration-300 ${filters.status === s.v ? 'bg-red-600 border-red-600 text-white shadow-xl shadow-red-600/30' : 'bg-white/5 border-white/5 text-white/40'}`}
+                      >
+                        {s.l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between px-2">
+                    <label className="text-[11px] font-bold text-white/30 uppercase tracking-[0.3em]">Format</label>
+                    {filters.formats.length > 0 && <button onClick={() => setSingleFilter('format', '')} className="text-[9px] font-bold text-red-500 uppercase tracking-widest">Reset</button>}
+                  </div>
+                  <div className="flex flex-wrap gap-2.5">
+                    {["TV", "MOVIE", "OVA", "ONA", "SPECIAL"].map(f => (
+                      <button 
+                        key={f} 
+                        onClick={() => toggleFilter('formats', f)} 
+                        className={`px-6 h-12 rounded-2xl text-xs font-bold border transition-all duration-300 ${filters.formats.includes(f) ? 'bg-white text-black border-white' : 'bg-white/5 border-white/5 text-white/40'}`}
+                      >
+                        {f}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6 px-1">
+                  <div className="space-y-4">
+                    <label className="text-[11px] font-bold text-white/30 uppercase tracking-[0.3em]">Year</label>
+                    <select value={filters.year} onChange={(e) => setSingleFilter('year', e.target.value)} className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 text-sm font-bold outline-none ring-red-500/20 focus:ring-4 transition-all">
+                      <option value="" className="bg-[#0d0d0d]">Any Year</option>
+                      {Array.from({ length: 30 }, (_, i) => 2026-i).map(y => <option key={y} value={y} className="bg-[#0d0d0d]">{y}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-4">
+                    <label className="text-[11px] font-bold text-white/30 uppercase tracking-[0.3em]">Season</label>
+                    <select value={filters.season} onChange={(e) => setSingleFilter('season', e.target.value)} className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 text-sm font-bold outline-none ring-red-500/20 focus:ring-4 transition-all">
+                      <option value="" className="bg-[#0d0d0d]">Any Season</option>
+                      {["WINTER", "SPRING", "SUMMER", "FALL"].map(s => <option key={s} value={s} className="bg-[#0d0d0d]">{s}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <label className="text-[11px] font-bold text-white/30 uppercase tracking-[0.3em] px-2">Popular Genres</label>
+                  <div className="flex flex-wrap gap-2.5">
+                    {ALL_GENRES.slice(0, 24).map(g => {
+                      const inClude = filters.include.includes(g);
+                      return (
+                        <button 
+                          key={g} 
+                          onClick={() => toggleGenre(g)} 
+                          className={`px-5 py-3 rounded-full text-[11px] font-bold border transition-all duration-300 ${inClude ? 'bg-red-600 border-red-600 text-white shadow-lg shadow-red-600/20' : 'bg-white/5 border-white/10 text-white/40 active:bg-white/20'}`}
+                        >
+                          {g}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                  <button onClick={handleReset} className="flex-1 h-16 bg-white/5 text-white text-xs font-bold uppercase tracking-widest rounded-3xl active:scale-95 transition-all">Reset All</button>
+                  <button onClick={() => setIsMobileFilterOpen(false)} className="flex-[2] h-16 bg-red-600 text-white text-xs font-bold uppercase tracking-widest rounded-3xl shadow-2xl shadow-red-600/30 active:scale-95 transition-all">Sync Results</button>
                 </div>
               </div>
-            )}
+            </div>
           </div>
-
-          <div className="relative flex-1 border-r border-white/5">
-            <button type="button" onClick={() => { setOpenDropdown(openDropdown === "status" ? null : "status"); }} className="w-full h-full flex items-center justify-between px-3 text-[12px] text-white/40">
-              <span className="truncate">{filters.status || "Status"}</span>
-              <ChevronDown className="w-3 h-3 text-white/20" />
-            </button>
-            {openDropdown === "status" && (
-              <div className="absolute top-[44px] left-0 w-40 bg-[#121212] border border-white/5 rounded-[4px] shadow-2xl z-[100]">
-                {["", "RELEASING", "FINISHED", "NOT_YET_RELEASED"].map(val => (
-                  <button key={val} type="button" onClick={() => { handleSingleSelect("status", val); setOpenDropdown(null); }} className="w-full px-4 py-2 text-[12px] text-left text-white/40 hover:bg-white/5">
-                    {val || "All Status"}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="relative border-l border-white/5 ml-auto">
-            <button type="button" onClick={() => { setOpenDropdown(openDropdown === "sort" ? null : "sort"); }} className="flex items-center justify-center w-10 h-full text-white/20 hover:bg-white/5">
-              <ArrowDownUp size={14} />
-            </button>
-            {openDropdown === "sort" && (
-              <div className="absolute top-[44px] right-0 w-48 bg-[#121212] border border-white/5 rounded-[4px] shadow-2xl z-[100]">
-                {[
-                  { label: "Trending", value: "TRENDING_DESC" },
-                  { label: "Popularity", value: "POPULARITY_DESC" },
-                  { label: "Score", value: "SCORE_DESC" },
-                  { label: "Recently Added", value: "ID_DESC" }
-                ].map(s => (
-                  <button key={s.value} onClick={() => { handleSingleSelect("sort", s.value); setOpenDropdown(null); }} className="w-full px-4 py-2 text-[12px] text-left text-white/40 hover:bg-white/5">
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <button type="button" onClick={() => { refetch(); }} className="px-6 h-full bg-red-600 text-white text-[12px] font-bold">Filter</button>
-        </form>
-
-        {(isLoading || (isFetching && animeList.length === 0)) ? (
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9 gap-4 text-white/10">
-            {Array.from({ length: 54 }).map((_, i) => <SkeletonCard key={i} />)}
-          </div>
-        ) : animeList.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9 gap-4">
-            {animeList.map(anime => <AnimeCard key={anime.id} anime={anime} />)}
-          </div>
-        ) : (
-          <div className="text-center py-24 opacity-40 text-sm">No results found matching your selection.</div>
         )}
 
-        {(!isLoading && result.pageInfo && result.pageInfo.lastPage > 1) && (
-          <Pagination currentPage={page} totalPages={result.pageInfo.lastPage} onPageChange={handlePageChange} />
+        {/* Persistent Pagination */}
+        {result.pageInfo?.lastPage > 1 && (
+          <div className={`mt-24 transition-all duration-1000 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}>
+            <Pagination currentPage={filters.page} totalPages={result.pageInfo.lastPage} onPageChange={handlePageChange} />
+          </div>
         )}
       </main>
       <Footer />
