@@ -121,11 +121,21 @@ export default function Browse() {
       const { vars, isMAL } = queryData;
       let res = await (isMAL ? getBrowseAnimeMAL(vars) : getBrowseAnime(vars));
       
-      // AUTO-DECORATE WITH DUB INFO (Parallel)
-      // Mirroring Homepage "Verified Dub" logic
+      // SMART-DECORATE WITH DUB INFO
+      // 1. Title Heuristic (Instant) + 2. Backend Verification (Accurate)
       const mediaWithDub = await Promise.all(
         (res.media || []).map(async (anime) => {
           try {
+            // Heuristic Check (First Pass)
+            const searchTitle = (anime.title?.english || "").toLowerCase();
+            const synonyms = (anime.synonyms || []).map(s => s.toLowerCase());
+            const hasDubKeyword = searchTitle.includes("(dub)") || 
+                                 searchTitle.includes("dubbed") || 
+                                 synonyms.some(s => s.includes("dub"));
+            
+            // If heuristic fails, check backend
+            if (hasDubKeyword) return { ...anime, dub: true };
+
             const dubInfo = await checkDubAvailability(anime.id);
             return { ...anime, dub: dubInfo.hasDub };
           } catch {

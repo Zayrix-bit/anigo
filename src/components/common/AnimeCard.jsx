@@ -35,7 +35,7 @@ export default function AnimeCard({ anime }) {
             {format}
           </div>
           {anime.dub && (
-            <div className="bg-white text-black text-[8px] font-black px-1 py-[1.5px] flex items-center justify-center rounded-br-sm shadow-lg border-l border-b border-white/20">
+            <div className="bg-white text-red-600 text-[8px] font-black px-1.5 py-[2px] flex items-center justify-center rounded-sm shadow-xl border border-red-600/20">
               DUB
             </div>
           )}
