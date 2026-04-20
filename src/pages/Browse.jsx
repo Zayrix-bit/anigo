@@ -35,9 +35,9 @@ export default function Browse() {
       sort: searchParams.get("sort") || "TRENDING_DESC",
       year: searchParams.get("year") || "",
       season: searchParams.get("season") || "",
-      country: searchParams.get("country") || "",
+      country: searchParams.getAll("country"),
       rating: searchParams.get("rating") || "",
-      language: searchParams.get("language") || "",
+      language: searchParams.getAll("language"),
       excludeMyList: searchParams.get("onList") === "false",
       page: parseInt(searchParams.get("page") || "1"),
     };
@@ -102,7 +102,7 @@ export default function Browse() {
         perPage: 48,
         sort: [filters.sort],
       };
-      
+
       if (filters.search) vars.search = filters.search;
       if (filters.formats.length > 0) vars.format_in = filters.formats;
 
@@ -121,7 +121,7 @@ export default function Browse() {
       if (filters.status) vars.status = filters.status;
       if (filters.year) vars.seasonYear = parseInt(filters.year);
       if (filters.season) vars.season = filters.season;
-      if (filters.country) vars.country = filters.country;
+      if (filters.country.length > 0) vars.country = filters.country[0]; // AniList takes single CountryCode
       if (filters.rating) vars.averageScore_greater = parseInt(filters.rating);
 
       return getBrowseAnime(vars);
@@ -221,7 +221,7 @@ export default function Browse() {
   return (
     <div className="min-h-screen bg-[#060606] text-white selection:bg-red-500/30 font-sans">
       <Navbar />
-      
+
       {/* Mobile Top Header */}
       <header className="fixed top-0 left-0 right-0 z-[60] bg-[#0a0a0a]/90 backdrop-blur-xl border-b border-white/5 md:hidden">
         <div className="px-5 h-16 flex items-center justify-between">
@@ -229,7 +229,7 @@ export default function Browse() {
             <Filter size={14} className="text-red-500" />
             <h1 className="text-[12px] font-bold tracking-[0.2em] text-white/90 uppercase">Browse</h1>
           </div>
-          <button 
+          <button
             onClick={() => setIsMobileFilterOpen(true)}
             className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center active:scale-95 transition-all"
           >
@@ -239,12 +239,12 @@ export default function Browse() {
       </header>
 
       <main className="container max-w-[1720px] mx-auto px-2 md:px-4 pt-16 md:pt-20 pb-20">
-        
+
         {/* Page Head - Ultra Compact */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className="w-1 h-5 bg-red-600 rounded-full shrink-0" />
-            <h2 className="text-2xl font-bold tracking-tighter">Browse</h2>
+            <h2 className="text-2xl font-normal tracking-tighter">Browse</h2>
           </div>
         </div>
 
@@ -254,9 +254,9 @@ export default function Browse() {
             <div className="flex h-[52px] bg-[#0d0d0d] border border-white/10 rounded-xl overflow-visible shadow-2xl relative">
               <div className="flex-[2.5] relative flex items-center border-r border-white/5">
                 <Search className="absolute left-6 w-4 h-4 text-white/20" />
-                <input 
-                  type="text" 
-                  placeholder="Universal Search..." 
+                <input
+                  type="text"
+                  placeholder="Universal Search..."
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   className="w-full h-full bg-transparent pl-14 pr-12 text-[14px] text-white font-medium placeholder-white/10 outline-none"
@@ -269,17 +269,17 @@ export default function Browse() {
               </div>
 
               {[
-                { label: "Types", key: "type", active: filters.formats.length > 0 },
-                { label: "Genres", key: "genre", active: filters.genres.length > 0 },
-                { label: "Status", key: "status", active: !!filters.status },
+                { label: "Types", key: "types", options: [{ label: "TV", value: "TV" }, { label: "Movie", value: "MOVIE" }, { label: "OVA", value: "OVA" }, { label: "ONA", value: "ONA" }, { label: "Special", value: "SPECIAL" }] },
+                { label: "Genres", key: "genre", options: ALL_GENRES },
+                { label: "Status", key: "status", options: [{ label: "Any", value: "" }, { label: "Releasing", value: "RELEASING" }, { label: "Finished", value: "FINISHED" }, { label: "Upcoming", value: "NOT_YET_RELEASED" }] },
                 { label: "Advanced", key: "advanced", active: filters.year || filters.season || filters.rating }
               ].map(dd => (
                 <div key={dd.key} className="flex-1 relative flex items-center border-r border-white/5 group">
-                  <button 
-                    onClick={() => setOpenDropdown(openDropdown === dd.key ? null : dd.key)} 
+                  <button
+                    onClick={() => setOpenDropdown(openDropdown === dd.key ? null : dd.key)}
                     className={`w-full h-full flex items-center justify-between px-6 transition-all hover:bg-white/[0.02] ${openDropdown === dd.key ? 'bg-white/[0.03]' : ''}`}
                   >
-                    <span className={`text-[11px] uppercase tracking-[0.2em] font-bold transition-colors ${dd.active ? 'text-red-500' : 'text-white/40'}`}>
+                    <span className={`text-[11px] uppercase tracking-[0.2em] font-medium transition-colors ${dd.active ? 'text-red-500' : 'text-white/40'}`}>
                       {dd.label}
                     </span>
                     <ChevronDown size={12} className={`text-white/20 transition-transform duration-300 ${openDropdown === dd.key ? 'rotate-180 text-red-500' : ''}`} />
@@ -288,86 +288,127 @@ export default function Browse() {
                   {openDropdown === dd.key && (
                     <>
                       <div className="fixed inset-0 z-[90]" onClick={() => setOpenDropdown(null)} />
-                      <div className={`absolute top-[calc(100%+12px)] bg-[#0d0d0d] border border-white/10 rounded-2xl shadow-[0_30px_60px_-12px_rgba(0,0,0,0.8)] p-8 z-[100] ${
-                        dd.key === 'genre' ? 'w-[800px] left-1/2 -translate-x-1/2' : 
-                        dd.key === 'advanced' ? 'w-[700px] right-0' : 'w-64 left-0'
+                      <div className={`absolute top-[calc(100%+8px)] bg-[#0d0d0d] border border-white/10 rounded-xl shadow-[0_20px_40px_-8px_rgba(0,0,0,0.8)] p-1.5 z-[100] ${
+                        dd.key === 'genre' ? 'w-[540px] left-1/2 -translate-x-1/2' : 
+                        dd.key === 'advanced' ? 'right-0' : 'w-40 left-0'
                       }`}>
-                        
-                        {dd.key === 'type' && (
-                          <div className="grid grid-cols-1 gap-1">
-                            {["TV", "MOVIE", "OVA", "ONA", "SPECIAL", "MUSIC"].map(f => (
-                              <button key={f} onClick={() => toggleFilter('formats', f)} className="flex items-center justify-between w-full p-3 rounded-xl hover:bg-white/5 transition-all group">
-                                <span className={`text-[14px] font-medium ${filters.formats.includes(f) ? 'text-red-500' : 'text-white/50 group-hover:text-white'}`}>{f}</span>
-                                {filters.formats.includes(f) && <Check className="w-4 h-4 text-red-500" />}
-                              </button>
-                            ))}
-                          </div>
-                        )}
 
-                        {dd.key === 'status' && (
-                          <div className="grid grid-cols-1 gap-1">
-                            {[{l:"Any Status",v:""}, {l:"Releasing",v:"RELEASING"}, {l:"Finished",v:"FINISHED"}, {l:"Upcoming",v:"NOT_YET_RELEASED"}].map(s => (
-                              <button key={s.v} onClick={() => { setSingleFilter('status', s.v); setOpenDropdown(null); }} className="flex items-center justify-between w-full p-3 rounded-xl hover:bg-white/5 transition-all group">
-                                <span className={`text-[14px] font-medium ${filters.status === s.v ? 'text-red-500' : 'text-white/50 group-hover:text-white'}`}>{s.l}</span>
-                                {filters.status === s.v && <Check className="w-4 h-4 text-red-500" />}
+                        {(dd.key === 'types' || dd.key === 'status') && (
+                          <div className="flex flex-col gap-0.5">
+                            {dd.options.map(opt => (
+                              <button
+                                key={opt.value}
+                                onClick={() => {
+                                  toggleFilter(dd.key === 'types' ? 'format' : 'status', opt.value);
+                                  setOpenDropdown(null);
+                                }}
+                                className={`w-full px-3 py-1.5 rounded-lg text-left text-[11px] transition-all flex items-center justify-between group ${(dd.key === 'types' ? filters.formats.includes(opt.value) : filters.status === opt.value)
+                                    ? 'bg-red-600/10 text-red-500 font-medium'
+                                    : 'text-white/40 hover:bg-white/[0.03] hover:text-white'
+                                  }`}
+                              >
+                                <span>{opt.label}</span>
+                                {(dd.key === 'types' ? filters.formats.includes(opt.value) : filters.status === opt.value) && <Check size={10} />}
                               </button>
                             ))}
                           </div>
                         )}
 
                         {dd.key === 'genre' && (
-                          <div className="grid grid-cols-4 gap-x-10 gap-y-4">
-                            {ALL_GENRES.map(g => {
-                              const inc = filters.include.includes(g);
-                              const exc = filters.exclude.includes(g);
-                              return (
-                                <button key={g} onClick={() => toggleGenre(g)} className="flex items-center gap-3.5 group text-left">
-                                  <div className={`w-4 h-4 border rounded-sm flex items-center justify-center shrink-0 transition-all ${inc ? 'bg-red-600 border-red-600 shadow-[0_0_10px_rgba(220,38,38,0.4)]' : exc ? 'bg-white/10 border-white/20' : 'bg-transparent border-white/20 group-hover:border-white/40'}`}>
-                                    {inc && <Check className="w-2.5 h-2.5 text-white" strokeWidth={4} />}
-                                    {exc && <X className="w-2.5 h-2.5 text-red-500" strokeWidth={4} />}
-                                  </div>
-                                  <span className={`text-[13px] font-medium leading-none transition-all ${inc ? 'text-white' : exc ? 'text-white/20 line-through' : 'text-white/50 group-hover:text-white'}`}>{g}</span>
+                          <div className="space-y-3 p-1">
+                            <div className="grid grid-cols-5 gap-1">
+                              {dd.options.map(opt => (
+                                <button
+                                  key={opt}
+                                  onClick={() => toggleGenre(opt)}
+                                  className={`px-2 py-1.5 rounded text-left text-[10px] transition-all flex items-center justify-between group ${filters.include.includes(opt)
+                                      ? 'bg-red-600/10 text-red-500 font-medium border border-red-500/20'
+                                      : 'text-white/30 border border-transparent hover:bg-white/[0.03] hover:text-white/60'
+                                    }`}
+                                >
+                                  <span className="truncate">{opt}</span>
+                                  {filters.include.includes(opt) && <Check size={9} />}
                                 </button>
-                              );
-                            })}
+                              ))}
+                            </div>
+                            <div className="pt-2 border-t border-white/5 flex items-center justify-end gap-2 text-[9px]">
+                              <button onClick={handleReset} className="px-4 py-1.5 uppercase tracking-widest text-white/20 hover:text-white transition-colors">Reset</button>
+                              <button onClick={() => setOpenDropdown(null)} className="px-5 py-1.5 bg-white/5 border border-white/10 text-white uppercase tracking-[0.2em] rounded-lg hover:bg-white/10 transition-all">Close</button>
+                            </div>
                           </div>
                         )}
 
                         {dd.key === 'advanced' && (
-                          <div className="space-y-10">
-                            <div className="grid grid-cols-3 gap-8">
-                              <div className="space-y-3">
-                                <label className="text-[10px] text-white/30 uppercase tracking-[0.3em] font-bold pl-1">Year</label>
-                                <select value={filters.year} onChange={(e) => setSingleFilter("year", e.target.value)} className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-[14px] font-medium outline-none hover:border-white/20 transition-all cursor-pointer">
-                                  <option value="" className="bg-[#0d0d0d]">Any Year</option>
-                                  {Array.from({length: 45}, (_, i) => 2026-i).map(y => <option key={y} value={y} className="bg-[#0d0d0d]">{y}</option>)}
-                                </select>
+                          <div className="w-[320px] p-2 space-y-3">
+                            <div className="flex gap-2">
+                              {['season', 'year'].map(key => (
+                                <div key={key} className="flex-1">
+                                  <label className="block text-[7px] text-white/20 uppercase tracking-[0.2em] mb-1 px-1 font-bold">{key}</label>
+                                  <div className="relative">
+                                    <select 
+                                      value={filters[key]} 
+                                      onChange={(e) => setSingleFilter(key, e.target.value)}
+                                      className="w-full h-7 bg-white/[0.03] border border-white/5 rounded-md px-2 pr-6 text-[10px] text-white/80 outline-none hover:bg-white/[0.06] transition-all cursor-pointer appearance-none"
+                                    >
+                                      <option value="" className="bg-[#0d0d0d]">{key === 'season' ? 'Season' : 'Year'}</option>
+                                      {key === 'season' 
+                                        ? ["WINTER", "SPRING", "SUMMER", "FALL"].map(s => <option key={s} value={s} className="bg-[#0d0d0d]">{s}</option>)
+                                        : Array.from({length: 45}, (_, i) => 2026-i).map(y => <option key={y} value={y} className="bg-[#0d0d0d]">{y}</option>)
+                                      }
+                                    </select>
+                                    <ChevronDown size={8} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/20 pointer-events-none" />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 pb-1">
+                              <div className="space-y-1.5">
+                                <label className="block text-[7px] text-white/20 uppercase tracking-[0.2em] px-1 font-bold">Country</label>
+                                <div className="space-y-1 px-0.5">
+                                  {[{label:"China", v:"CN"}, {label:"Japan", v:"JP"}].map(c => (
+                                    <button key={c.v} onClick={() => toggleFilter('country', c.v)} className="flex items-center gap-1.5 group w-full py-0.5">
+                                      <div className={`w-2.5 h-2.5 rounded-[2px] border transition-all flex items-center justify-center ${filters.country.includes(c.v) ? 'bg-red-600 border-red-600' : 'bg-white/5 border-white/10 group-hover:border-white/20'}`}>
+                                        {filters.country.includes(c.v) && <Check size={7} strokeWidth={4} className="text-white" />}
+                                      </div>
+                                      <span className={`text-[10px] transition-colors ${filters.country.includes(c.v) ? 'text-white/90' : 'text-white/30 group-hover:text-white/50'}`}>{c.label}</span>
+                                    </button>
+                                  ))}
+                                </div>
                               </div>
-                              <div className="space-y-3">
-                                <label className="text-[10px] text-white/30 uppercase tracking-[0.3em] font-bold pl-1">Season</label>
-                                <select value={filters.season} onChange={(e) => setSingleFilter("season", e.target.value)} className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-[14px] font-medium outline-none hover:border-white/20 transition-all cursor-pointer">
-                                  <option value="" className="bg-[#0d0d0d]">Any Season</option>
-                                  {["WINTER", "SPRING", "SUMMER", "FALL"].map(s => <option key={s} value={s} className="bg-[#0d0d0d]">{s}</option>)}
-                                </select>
-                              </div>
-                              <div className="space-y-3">
-                                <label className="text-[10px] text-white/30 uppercase tracking-[0.3em] font-bold pl-1">Score</label>
-                                <select value={filters.rating} onChange={(e) => setSingleFilter("rating", e.target.value)} className="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-4 text-[14px] font-medium outline-none hover:border-white/20 transition-all cursor-pointer">
-                                  <option value="" className="bg-[#0d0d0d]">Score</option>
-                                  {[9, 8, 7, 6, 5, 4, 3, 2, 1].map(r => <option key={r} value={r*10} className="bg-[#0d0d0d]">{r}0% +</option>)}
-                                </select>
+
+                              <div className="space-y-1.5">
+                                <label className="block text-[7px] text-white/20 uppercase tracking-[0.2em] px-1 font-bold">Language</label>
+                                <div className="space-y-1 px-0.5">
+                                  {[
+                                    {label:"Hard Sub", v:"HARD_SUB"}, 
+                                    {label:"Soft Sub", v:"SOFT_SUB"}, 
+                                    {label:"Dub", v:"DUB"}
+                                  ].map(l => (
+                                    <button key={l.v} onClick={() => toggleFilter('language', l.v)} className="flex items-center gap-1.5 group w-full py-0.5">
+                                      <div className={`w-2.5 h-2.5 rounded-[2px] border transition-all flex items-center justify-center ${filters.language.includes(l.v) ? 'bg-red-600 border-red-600' : 'bg-white/5 border-white/10 group-hover:border-white/20'}`}>
+                                        {filters.language.includes(l.v) && <Check size={7} strokeWidth={4} className="text-white" />}
+                                      </div>
+                                      <span className={`text-[10px] transition-colors ${filters.language.includes(l.v) ? 'text-white/90' : 'text-white/30 group-hover:text-white/50'}`}>{l.label}</span>
+                                    </button>
+                                  ))}
+                                </div>
                               </div>
                             </div>
-                            <div className="pt-8 border-t border-white/5 flex items-center justify-between">
-                              <button onClick={() => setSingleFilter("onList", filters.excludeMyList ? "" : "false")} className="flex items-center gap-4 group">
-                                <div className={`w-5 h-5 border rounded-md flex items-center justify-center transition-all ${filters.excludeMyList ? 'bg-red-600 border-red-600' : 'border-white/20 group-hover:border-white/40'}`}>
-                                  {filters.excludeMyList && <Check className="w-3.5 h-3.5 text-white" />}
+
+                            <div className="pt-2 border-t border-white/5 flex items-center justify-between">
+                              <button 
+                                onClick={() => setSingleFilter("onList", filters.excludeMyList ? "" : "false")} 
+                                className="flex items-center gap-1.5 group py-1"
+                              >
+                                <div className={`w-2.5 h-2.5 rounded-[2px] border transition-all flex items-center justify-center ${filters.excludeMyList ? 'bg-red-600 border-red-600' : 'bg-white/5 border-white/10 group-hover:border-white/20'}`}>
+                                  {filters.excludeMyList && <Check size={7} strokeWidth={4} className="text-white" />}
                                 </div>
-                                <span className="text-[13px] font-medium text-white/40 group-hover:text-white transition-colors">Exclude items from my list</span>
+                                <span className={`text-[10px] transition-colors ${filters.excludeMyList ? 'text-white/90' : 'text-white/30 group-hover:text-white/50'}`}>Exclude my list</span>
                               </button>
-                              <div className="flex items-center gap-4">
-                                <button onClick={handleReset} className="px-6 py-2.5 text-[11px] uppercase tracking-widest font-bold text-white/40 hover:text-white transition-colors">Reset</button>
-                                <button onClick={() => setOpenDropdown(null)} className="px-8 py-2.5 bg-red-600 text-white text-[11px] uppercase font-bold tracking-widest rounded-full hover:bg-red-700 transition-all shadow-lg shadow-red-600/20">Close</button>
+                              <div className="flex gap-2">
+                                <button onClick={handleReset} className="text-[9px] uppercase tracking-widest text-white/20 hover:text-white transition-colors">Reset</button>
+                                <button onClick={() => setOpenDropdown(null)} className="px-4 py-1 bg-white/5 border border-white/10 text-white/60 text-[9px] uppercase tracking-[0.2em] rounded-md hover:bg-white/10 transition-all">Close</button>
                               </div>
                             </div>
                           </div>
@@ -378,19 +419,19 @@ export default function Browse() {
                 </div>
               ))}
 
-              <button 
+              <button
                 onClick={handleShuffleSort}
                 className="w-16 h-full flex items-center justify-center transition-all hover:bg-white/[0.04] text-white/20 hover:text-red-500 border-r border-white/5"
               >
                 <RefreshCw size={16} className={isFetching ? 'animate-spin' : ''} />
               </button>
 
-              <button 
+              <button
                 onClick={() => refetch()}
                 className="px-10 bg-red-600 text-white flex items-center gap-4 rounded-r-xl group active:scale-95 transition-all overflow-hidden relative"
               >
                 <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500" />
-                <span className="text-[13px] font-bold uppercase tracking-[0.2em] relative z-10">Sync</span>
+                <span className="text-[13px] font-normal uppercase tracking-[0.2em] relative z-10">Sync</span>
                 <ArrowRight size={16} className="relative z-10 group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
@@ -399,31 +440,31 @@ export default function Browse() {
             <div className="flex flex-wrap gap-2 pt-2">
               {(filters.include.length + filters.exclude.length + filters.formats.length + (filters.status ? 1 : 0) + (filters.year ? 1 : 0)) > 0 && (
                 <>
-                  <button onClick={handleReset} className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 hover:border-red-500/50 hover:bg-red-500/5 text-white/40 hover:text-red-500 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all mr-3">
-                    <Trash2 size={11} /> Reset All
+                  <button onClick={handleReset} className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 border border-white/10 hover:border-red-500/50 hover:bg-red-500/5 text-white/40 hover:text-red-500 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all mr-2">
+                    <Trash2 size={10} /> Reset
                   </button>
                   {filters.include.map(g => (
-                    <div key={g} className="group flex items-center gap-2 px-4 py-2 bg-red-600/10 border border-red-600/30 rounded-full text-[10px] text-red-500 font-bold uppercase tracking-widest transition-all">
-                      {g} 
-                      <X size={11} className="cursor-pointer text-red-500/50 group-hover:text-red-500" onClick={() => toggleGenre(g)} />
+                    <div key={g} className="group flex items-center gap-2 px-3 py-1.5 bg-red-600/10 border border-red-600/30 rounded-full text-[9px] text-red-500 font-bold uppercase tracking-widest transition-all">
+                      {g}
+                      <X size={10} className="cursor-pointer text-red-500/50 group-hover:text-red-500" onClick={() => toggleGenre(g)} />
                     </div>
                   ))}
                   {filters.exclude.map(g => (
-                    <div key={g} className="group flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-[10px] text-white/30 font-bold uppercase tracking-widest">
-                      <span className="line-through">{g}</span> 
-                      <X size={11} className="cursor-pointer text-white/20 group-hover:text-white" onClick={() => toggleGenre(g)} />
+                    <div key={g} className="group flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full text-[9px] text-white/30 font-bold uppercase tracking-widest">
+                      <span className="line-through">{g}</span>
+                      <X size={10} className="cursor-pointer text-white/20 group-hover:text-white" onClick={() => toggleGenre(g)} />
                     </div>
                   ))}
                   {filters.formats.map(f => (
-                    <div key={f} className="group flex items-center gap-2 px-4 py-2 bg-blue-600/10 border border-blue-600/30 rounded-full text-[10px] text-blue-500 font-bold uppercase tracking-widest">
-                      {f} 
-                      <X size={11} className="cursor-pointer text-blue-500/50 group-hover:text-blue-500" onClick={() => toggleFilter('formats', f)} />
+                    <div key={f} className="group flex items-center gap-2 px-3 py-1.5 bg-blue-600/10 border border-blue-600/30 rounded-full text-[9px] text-blue-500 font-bold uppercase tracking-widest">
+                      {f}
+                      <X size={10} className="cursor-pointer text-blue-500/50 group-hover:text-blue-500" onClick={() => toggleFilter('formats', f)} />
                     </div>
                   ))}
                   {filters.status && (
-                    <div className="group flex items-center gap-2 px-4 py-2 bg-green-600/10 border border-green-600/30 rounded-full text-[10px] text-green-500 font-bold uppercase tracking-widest">
+                    <div className="group flex items-center gap-2 px-3 py-1.5 bg-green-600/10 border border-green-600/30 rounded-full text-[9px] text-green-500 font-bold uppercase tracking-widest">
                       {filters.status.replace('_', ' ')}
-                      <X size={11} className="cursor-pointer text-green-500/50 group-hover:text-green-500" onClick={() => setSingleFilter('status', '')} />
+                      <X size={10} className="cursor-pointer text-green-500/50 group-hover:text-green-500" onClick={() => setSingleFilter('status', '')} />
                     </div>
                   )}
                 </>
@@ -443,7 +484,7 @@ export default function Browse() {
                 className="flex-1 bg-transparent px-4 text-sm font-medium placeholder-white/20 outline-none"
               />
             </div>
-            <button 
+            <button
               onClick={() => setIsMobileFilterOpen(true)}
               className="w-14 h-14 flex items-center justify-center bg-red-600 rounded-2xl shadow-xl shadow-red-600/20 active:scale-95 transition-all outline-none"
             >
@@ -469,8 +510,8 @@ export default function Browse() {
               </div>
               <h3 className="text-3xl font-bold tracking-tight mb-4">No results found</h3>
               <p className="text-white/40 max-w-sm text-sm mb-12 leading-relaxed font-medium">We couldn't find anything matching your exact filter setup. Try relaxing your constraints.</p>
-              <button 
-                onClick={handleReset} 
+              <button
+                onClick={handleReset}
                 className="px-12 py-4 bg-red-600 hover:bg-red-700 text-white text-[12px] font-bold uppercase tracking-[0.3em] rounded-full transition-all shadow-2xl shadow-red-600/30 active:scale-95"
               >
                 Clear all filters
@@ -485,14 +526,14 @@ export default function Browse() {
             <div className="absolute inset-0 bg-black/95 backdrop-blur-md transition-opacity" onClick={() => setIsMobileFilterOpen(false)} />
             <div className="absolute bottom-0 left-0 right-0 max-h-[94vh] bg-[#0d0d0d] border-t border-white/10 rounded-t-[48px] p-8 pb-12 overflow-y-auto shadow-[0_-20px_60px_rgba(0,0,0,0.8)]">
               <div className="w-16 h-1 bg-white/10 rounded-full mx-auto mb-12" />
-              
+
               <div className="flex items-center justify-between mb-12 px-2">
                 <div className="space-y-1">
                   <h3 className="text-3xl font-bold tracking-tight">Browse</h3>
                   <p className="text-red-500 text-[10px] font-bold uppercase tracking-[0.4em]">Personalize</p>
                 </div>
-                <button 
-                  onClick={() => setIsMobileFilterOpen(false)} 
+                <button
+                  onClick={() => setIsMobileFilterOpen(false)}
                   className="w-12 h-12 flex items-center justify-center bg-white/5 rounded-2xl active:scale-90 transition-all border border-white/5"
                 >
                   <X size={20} className="text-white/60" />
@@ -506,10 +547,10 @@ export default function Browse() {
                     {filters.status && <button onClick={() => setSingleFilter('status', '')} className="text-[9px] font-bold text-red-500 uppercase tracking-widest">Reset</button>}
                   </div>
                   <div className="flex flex-wrap gap-2.5">
-                    {[{l:"All",v:""}, {l:"Airing",v:"RELEASING"}, {l:"Finished",v:"FINISHED"}, {l:"Soon",v:"NOT_YET_RELEASED"}].map(s => (
-                      <button 
-                        key={s.v} 
-                        onClick={() => setSingleFilter('status', s.v)} 
+                    {[{ l: "All", v: "" }, { l: "Airing", v: "RELEASING" }, { l: "Finished", v: "FINISHED" }, { l: "Soon", v: "NOT_YET_RELEASED" }].map(s => (
+                      <button
+                        key={s.v}
+                        onClick={() => setSingleFilter('status', s.v)}
                         className={`flex-1 min-w-[80px] h-12 rounded-2xl text-xs font-bold border transition-all duration-300 ${filters.status === s.v ? 'bg-red-600 border-red-600 text-white shadow-xl shadow-red-600/30' : 'bg-white/5 border-white/5 text-white/40'}`}
                       >
                         {s.l}
@@ -525,9 +566,9 @@ export default function Browse() {
                   </div>
                   <div className="flex flex-wrap gap-2.5">
                     {["TV", "MOVIE", "OVA", "ONA", "SPECIAL"].map(f => (
-                      <button 
-                        key={f} 
-                        onClick={() => toggleFilter('formats', f)} 
+                      <button
+                        key={f}
+                        onClick={() => toggleFilter('formats', f)}
                         className={`px-6 h-12 rounded-2xl text-xs font-bold border transition-all duration-300 ${filters.formats.includes(f) ? 'bg-white text-black border-white' : 'bg-white/5 border-white/5 text-white/40'}`}
                       >
                         {f}
@@ -541,7 +582,7 @@ export default function Browse() {
                     <label className="text-[11px] font-bold text-white/30 uppercase tracking-[0.3em]">Year</label>
                     <select value={filters.year} onChange={(e) => setSingleFilter('year', e.target.value)} className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-6 text-sm font-bold outline-none ring-red-500/20 focus:ring-4 transition-all">
                       <option value="" className="bg-[#0d0d0d]">Any Year</option>
-                      {Array.from({ length: 30 }, (_, i) => 2026-i).map(y => <option key={y} value={y} className="bg-[#0d0d0d]">{y}</option>)}
+                      {Array.from({ length: 30 }, (_, i) => 2026 - i).map(y => <option key={y} value={y} className="bg-[#0d0d0d]">{y}</option>)}
                     </select>
                   </div>
                   <div className="space-y-4">
@@ -559,9 +600,9 @@ export default function Browse() {
                     {ALL_GENRES.slice(0, 24).map(g => {
                       const inClude = filters.include.includes(g);
                       return (
-                        <button 
-                          key={g} 
-                          onClick={() => toggleGenre(g)} 
+                        <button
+                          key={g}
+                          onClick={() => toggleGenre(g)}
                           className={`px-5 py-3 rounded-full text-[11px] font-bold border transition-all duration-300 ${inClude ? 'bg-red-600 border-red-600 text-white shadow-lg shadow-red-600/20' : 'bg-white/5 border-white/10 text-white/40 active:bg-white/20'}`}
                         >
                           {g}
