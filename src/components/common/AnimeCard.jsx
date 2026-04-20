@@ -43,7 +43,7 @@ export default function AnimeCard({ anime }) {
         <div className="relative w-full aspect-2/3 overflow-hidden rounded-[6px] bg-[#2a2a2a] shadow-lg text-white">
           {!imgError ? (
             <img
-              src={anime.coverImage?.large}
+              src={anime.coverImage?.extraLarge || anime.coverImage?.large}
               alt={getTitle(anime.title)}
               loading="lazy"
               onError={() => setImgError(true)}

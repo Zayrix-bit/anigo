@@ -1384,7 +1384,7 @@ export default function Watch() {
                   {/* Background Image with Blur/Darken */}
                   <div className="absolute inset-0 z-0">
                     <img
-                      src={item.coverImage?.large}
+                      src={item.coverImage?.extraLarge || item.coverImage?.large}
                       alt=""
                       className={`w-full h-full object-cover transition-all duration-700 ${item.isActive ? 'scale-110 blur-[1px] opacity-40' : 'opacity-20 blur-[2px] group-hover:opacity-30'}`}
                     />

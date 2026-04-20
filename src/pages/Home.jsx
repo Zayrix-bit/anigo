@@ -37,7 +37,7 @@ export default function Home() {
   /* Hero background images from trending posters */
   const bgImages = trending
     .slice(0, 6)
-    .map((a) => a.coverImage?.large)
+    .map((a) => a.coverImage?.extraLarge || a.coverImage?.large)
     .filter(Boolean);
 
   return (

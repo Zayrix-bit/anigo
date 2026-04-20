@@ -41,7 +41,7 @@ const ANIME_QUERY = `
       media(type: ANIME, sort: $sort) {
         id
         title { romaji english native }
-        coverImage { large medium }
+        coverImage { extraLarge large medium }
         format
         episodes
         seasonYear
@@ -79,7 +79,7 @@ export const SEARCH_QUERY = `
       media(type: ANIME, search: $search) {
         id
         title { romaji english native }
-        coverImage { medium large }
+        coverImage { extraLarge large medium }
         episodes
         nextAiringEpisode {
           airingAt
@@ -120,7 +120,7 @@ export const BROWSE_QUERY = `
       media(type: ANIME, search: $search, format_in: $format_in, sort: $sort, seasonYear: $seasonYear, status: $status, genre_in: $genre_in, tag_in: $tag_in, season: $season, countryOfOrigin: $country) {
         id
         title { romaji english native }
-        coverImage { large medium }
+        coverImage { extraLarge large medium }
         format
         episodes
         seasonYear
@@ -255,7 +255,7 @@ const SEASONAL_QUERY = `
       media(type: ANIME, season: $season, seasonYear: $seasonYear, sort: $sort) {
         id
         title { romaji english native }
-        coverImage { large medium }
+        coverImage { extraLarge large medium }
         format
         episodes
         nextAiringEpisode {
@@ -313,7 +313,7 @@ const SCHEDULE_QUERY = `
         media {
           id
           title { romaji english native }
-          coverImage { medium }
+          coverImage { extraLarge large medium }
           format
           popularity
           isAdult
@@ -358,7 +358,7 @@ fragment RelationFields on Media {
   id
   idMal
   title { romaji english native }
-  coverImage { large }
+  coverImage { extraLarge large }
   episodes
   format
   type
@@ -466,7 +466,7 @@ query ($id: Int, $idMal: Int) {
         mediaRecommendation {
           id
           title { romaji english native }
-          coverImage { large }
+          coverImage { extraLarge large }
           format
           episodes
           averageScore
