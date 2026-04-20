@@ -297,7 +297,8 @@ class AnikaiScraper:
             "MAL Score:": "mal_score",
             "Studios:": "studios",
             "Producers:": "producers",
-            "Genres:": "genres"
+            "Genres:": "genres",
+            "Rating:": "rating"
         }
 
         items = soup.select(".anisc-info .item")
@@ -517,7 +518,8 @@ class AniwatchScraper:
                 "MAL Score:": "mal_score",
                 "Studios:": "studios",
                 "Producers:": "producers",
-                "Genres:": "genres"
+                "Genres:": "genres",
+                "Rating:": "rating"
             }
 
             # Scrape all detail items
@@ -577,10 +579,10 @@ class KitsuScraper:
             
             # 2. Fetch episodes
             ep_meta = {}
-            for offset in [0, 100, 200]:
+            for offset in range(0, 400, 20):
                 ep_data = http.get_json(f"{self.API}/episodes", params={
                     "filter[mediaId]": target_id,
-                    "page[limit]": 100,
+                    "page[limit]": 20,
                     "page[offset]": offset,
                     "sort": "number"
                 })
@@ -606,7 +608,7 @@ class KitsuScraper:
                         "image": img
                     }
                 
-                if len(ep_data["data"]) < 100:
+                if len(ep_data["data"]) < 20:
                     break
                     
             return ep_meta
@@ -768,6 +770,44 @@ def api_aniwatch_info(aniwatch_id):
 def api_malsync(mal_id):
     data = http.get_json(f"https://api.malsync.moe/mal/anime/{mal_id}")
     return data
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  API ROUTES — AniList Proxy (Bypass CORS)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@app.route("/api/anilist/proxy", methods=["POST"])
+@api_response
+def api_anilist_proxy():
+    payload = request.get_json()
+    if not payload or "query" not in payload:
+        return {"error": "Invalid payload"}, 400
+
+    # Basic abuse mitigation: Ensure query contains AniList keywords
+    query_str = str(payload.get("query", "")).lower()
+    allowed_keywords = ["page", "media", "staff", "character", "studio", "airing", "trend"]
+    if not any(k in query_str for k in allowed_keywords):
+         return {"error": "Forbidden: Non-AniList query pattern detected"}, 403
+
+    resp = http.post(
+        "https://graphql.anilist.co",
+        json=payload,
+        headers={"Content-Type": "application/json", "Accept": "application/json"},
+        timeout=10
+    )
+
+    # Robust response parsing
+    try:
+        content_type = resp.headers.get("Content-Type", "")
+        if "application/json" in content_type:
+            return resp.json(), resp.status_code
+        else:
+            log.error(f"AniList Proxy: Non-JSON response received. Headers: {resp.headers}")
+            log.debug(f"Raw response: {resp.text[:500]}")
+            return {"error": "AniList returned non-JSON response", "raw": resp.text[:200]}, resp.status_code
+    except Exception as e:
+        log.exception("AniList Proxy: Failed to parse response")
+        return {"error": "Proxy internal error", "details": str(e)}, 500
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

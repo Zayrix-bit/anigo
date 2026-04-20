@@ -47,6 +47,18 @@ export default function Hero({ bgImages = [] }) {
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery]);
 
+  const mapContentRating = (rating) => {
+    if (!rating || rating === "N/A") return "N/A";
+    const labels = {
+      'G': 'All Ages',
+      'PG': 'PG',
+      'PG_13': 'PG-13',
+      'R': '18+',
+      'R_17': '17+',
+    };
+    return labels[rating] || rating;
+  };
+
   return (
     <section className="relative w-full pt-[52px] z-50">
       {/* Background anime artwork mosaic */}
@@ -197,8 +209,8 @@ export default function Hero({ bgImages = [] }) {
                               {currentEps || "?"}
                             </span>
                             {/* Rating Badge */}
-                            <span className="text-[10px] text-[#777] border border-[#333] px-1.5 py-[1px] rounded font-bold uppercase tracking-tight">
-                              PG 13
+                            <span className="text-[11px] text-[#777] border border-[#333] px-1.5 py-[1px] rounded font-medium uppercase tracking-tight">
+                              {mapContentRating(anime.contentRating || anime.rating || (anime.isAdult ? "18+" : "PG-13"))}
                             </span>
                             {/* Type */}
                             <span className="text-[11px] text-[#777] font-bold">

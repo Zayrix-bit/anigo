@@ -16,7 +16,7 @@ const PYTHON_API = import.meta.env.PROD ? "" : "http://127.0.0.1:5000";
 
 async function fetchFromAniList(query, variables = {}) {
   try {
-    const { data } = await axios.post(ANILIST_URL, { query, variables }, {
+    const { data } = await axios.post(`${PYTHON_API}/api/anilist/proxy`, { query, variables }, {
       headers: { "Content-Type": "application/json" },
     });
 
@@ -103,7 +103,7 @@ export async function searchAnime(query) {
 export async function getGenres() {
   const query = `{ GenreCollection }`;
   try {
-    const { data } = await axios.post(ANILIST_URL, { query }, {
+    const { data } = await axios.post(`${PYTHON_API}/api/anilist/proxy`, { query }, {
       headers: { "Content-Type": "application/json" },
     });
     return data.data?.GenreCollection || [];
@@ -325,7 +325,7 @@ const SCHEDULE_QUERY = `
 
 export async function getSchedule(startTimestamp, endTimestamp) {
   try {
-    const { data } = await axios.post(ANILIST_URL, {
+    const { data } = await axios.post(`${PYTHON_API}/api/anilist/proxy`, {
       query: SCHEDULE_QUERY,
       variables: {
         page: 1,
@@ -480,7 +480,7 @@ query ($id: Int, $idMal: Int) {
 export async function getAnimeDetails(id, isMal = false) {
   const variables = isMal ? { idMal: parseInt(id) } : { id: parseInt(id) };
   try {
-    const { data } = await axios.post("https://graphql.anilist.co", {
+    const { data } = await axios.post(`${PYTHON_API}/api/anilist/proxy`, {
       query: DETAIL_QUERY,
       variables,
     }, {

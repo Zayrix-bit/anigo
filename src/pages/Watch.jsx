@@ -45,7 +45,8 @@ import {
   Smile,
   Sparkles,
   Meh,
-  CheckCircle2
+  CheckCircle2,
+  X
 } from "lucide-react";
 
 export default function Watch() {
@@ -58,7 +59,7 @@ export default function Watch() {
   const [activeEpisode, setActiveEpisode] = useState(1);
   const [addingAction, setAddingAction] = useState(false);
   const [selectStatus, setSelectStatus] = useState("Watching");
-  const [episodeLayout, setEpisodeLayout] = useState("detailed"); // "grid" | "list" | "detailed"
+  const [episodeLayout, setEpisodeLayout] = useState("list"); // "grid" | "list" | "detailed"
   const [playerLang, setPlayerLang] = useState("sub");
   const [activeServer, setActiveServer] = useState(1);
 
@@ -83,6 +84,8 @@ export default function Watch() {
   const [hasDub, setHasDub] = useState(false);
   const [isDescExpanded, setIsDescExpanded] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
+  const [episodeSearchQuery, setEpisodeSearchQuery] = useState("");
+  const [isEpisodeSearchOpen, setIsEpisodeSearchOpen] = useState(false);
 
   // Modal states
   const [showSkipModal, setShowSkipModal] = useState(false);
@@ -286,6 +289,7 @@ export default function Watch() {
         studios: jikanDetails?.studios?.map(s => s.name).join(", "),
         producers: jikanDetails?.producers?.map(p => p.name).join(", "),
         genres: jikanDetails?.genres?.map(g => g.name),
+        rating: jikanDetails?.rating?.split(" - ")[0],
       };
       if (jikanMap[field]) return jikanMap[field];
       // Final fallback values
@@ -308,6 +312,7 @@ export default function Watch() {
       studios: get("studios", anime.studios?.nodes?.filter(s => s.isAnimationStudio)[0]?.name),
       producers: get("producers", anime.studios?.nodes?.filter(s => !s.isAnimationStudio).map(s => s.name).join(", ")),
       genres: get("genres", anime.genres),
+      rating: get("rating"),
     };
   }, [anime, aniwatchDetails, anikaiDetails, jikanDetails]);
 
@@ -512,6 +517,29 @@ export default function Watch() {
     if (!count) count = 12; // fallback if entirely unknown
     return Array.from({ length: count }, (_, i) => i + 1);
   }, [anime]);
+
+  const filteredEpisodes = useMemo(() => {
+    if (!episodeSearchQuery) return episodesList;
+    const query = episodeSearchQuery.toLowerCase().trim();
+    return episodesList.filter(ep => {
+      const epStr = String(ep);
+      const kitsuData = kitsuEpisodes?.[ep] || kitsuEpisodes?.[epStr];
+      const jikanData = malEpisodes?.find(e => e.mal_id === ep);
+      
+      const title = (jikanData?.title || kitsuData?.title || "").toLowerCase();
+      return epStr.includes(query) || title.includes(query);
+    });
+  }, [episodesList, episodeSearchQuery, kitsuEpisodes, malEpisodes]);
+
+  // Clamp episodePage when filteredEpisodes changes (e.g. searching)
+  useEffect(() => {
+    const totalPages = Math.ceil(filteredEpisodes.length / EPISODES_PER_PAGE);
+    if (episodePage >= totalPages && totalPages > 0) {
+      setEpisodePage(totalPages - 1);
+    } else if (filteredEpisodes.length === 0 && episodePage !== 0) {
+      setEpisodePage(0);
+    }
+  }, [filteredEpisodes, EPISODES_PER_PAGE]);
 
   const [stableSeasons, setStableSeasons] = useState([]);
 
@@ -1106,66 +1134,107 @@ export default function Watch() {
               <div className="bg-[#0d0d0d] rounded-sm border border-white/5 overflow-hidden flex flex-col h-[500px] lg:h-full lg:max-h-[700px]">
 
                 {/* Sidebar Header */}
-                <header className="p-4 border-b border-white/10 flex items-center justify-between bg-[#111]">
-                  <div className="flex items-center gap-3">
-                    <h2 className="text-[12px] font-bold tracking-[0.2em] text-white uppercase">Episodes</h2>
-                    <div className="flex gap-2">
-                      <MessageSquare size={12} className="text-red-500" fill="currentColor" />
-                      <Mic size={12} className="text-white/20" fill="currentColor" />
+                <header className="p-4 border-b border-white/10 flex items-center justify-between bg-[#111] min-h-[60px]">
+                  {isEpisodeSearchOpen ? (
+                    <div className="flex items-center gap-3 w-full animate-in fade-in slide-in-from-right-2 duration-300">
+                      <Search size={14} className="text-red-500 shrink-0" />
+                      <input
+                        autoFocus
+                        type="text"
+                        placeholder="Search episode or title..."
+                        value={episodeSearchQuery}
+                        onChange={(e) => setEpisodeSearchQuery(e.target.value)}
+                        className="bg-transparent border-none outline-none text-[12px] text-white placeholder:text-white/20 w-full font-medium"
+                      />
+                      <button 
+                        onClick={() => {
+                          setIsEpisodeSearchOpen(false);
+                          setEpisodeSearchQuery("");
+                        }}
+                        className="text-white/40 hover:text-white transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-4 text-white/30">
-                    <Search size={14} className="hover:text-white cursor-pointer transition-colors" />
-                    <button
-                      onClick={() => {
-                        if (episodeLayout === "grid") setEpisodeLayout("list");
-                        else if (episodeLayout === "list") setEpisodeLayout("detailed");
-                        else setEpisodeLayout("grid");
-                      }}
-                      className="hover:text-white transition-colors cursor-pointer flex items-center"
-                    >
-                      {episodeLayout === "grid" && <LayoutGrid size={14} />}
-                      {episodeLayout === "list" && <List size={14} />}
-                      {episodeLayout === "detailed" && <Image size={14} />}
-                    </button>
-                    <MoreVertical size={14} className="hover:text-white cursor-pointer transition-colors" />
-                  </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <h2 className="text-[12px] font-bold tracking-[0.2em] text-white uppercase">Episodes</h2>
+                        <div className="flex gap-2">
+                          <MessageSquare size={12} className="text-red-500" fill="currentColor" />
+                          <Mic size={12} className="text-white/20" fill="currentColor" />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 text-white/50">
+                        <Search 
+                          size={17} 
+                          className="hover:text-white cursor-pointer transition-colors" 
+                          onClick={() => setIsEpisodeSearchOpen(true)}
+                        />
+                        <button
+                          onClick={() => {
+                            if (episodeLayout === "grid") setEpisodeLayout("list");
+                            else if (episodeLayout === "list") setEpisodeLayout("detailed");
+                            else setEpisodeLayout("grid");
+                          }}
+                          className="hover:text-white transition-colors cursor-pointer flex items-center"
+                        >
+                          {episodeLayout === "grid" && <LayoutGrid size={17} />}
+                          {episodeLayout === "list" && <List size={17} />}
+                          {episodeLayout === "detailed" && <Image size={17} />}
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </header>
 
                 {/* Range Selector */}
-                <div className="p-4 bg-[#0a0a0a] border-b border-white/5">
-                  {(() => {
-                    const totalPages = Math.ceil(episodesList.length / EPISODES_PER_PAGE);
-                    const pageStart = episodePage * EPISODES_PER_PAGE + 1;
-                    const pageEnd = Math.min((episodePage + 1) * EPISODES_PER_PAGE, episodesList.length);
-                    return (
-                      <div className="flex items-center justify-between bg-[#161616] px-3 py-2 rounded-sm border border-white/5">
-                        <button
-                          disabled={episodePage === 0}
-                          onClick={() => setEpisodePage(p => p - 1)}
-                          className={`transition-colors ${episodePage > 0 ? 'text-white hover:text-red-500' : 'text-white/5'}`}
-                        >
-                          <ChevronLeft size={18} />
-                        </button>
-                        <span className="text-[11px] font-bold tracking-widest text-white/80">
-                          {String(pageStart).padStart(3, '0')}-{String(pageEnd).padStart(3, '0')}
-                        </span>
-                        <button
-                          disabled={episodePage >= totalPages - 1}
-                          onClick={() => setEpisodePage(p => p + 1)}
-                          className={`transition-colors ${episodePage < totalPages - 1 ? 'text-white hover:text-red-500' : 'text-white/5'}`}
-                        >
-                          <ChevronRight size={18} />
-                        </button>
-                      </div>
-                    );
-                  })()}
-                </div>
+                {filteredEpisodes.length > 0 && (
+                  <div className="p-4 bg-[#0a0a0a] border-b border-white/5">
+                    {(() => {
+                      const totalPages = Math.ceil(filteredEpisodes.length / EPISODES_PER_PAGE);
+                      const pageStart = episodePage * EPISODES_PER_PAGE + 1;
+                      const pageEnd = Math.min((episodePage + 1) * EPISODES_PER_PAGE, filteredEpisodes.length);
+                      return (
+                        <div className="flex items-center justify-between bg-[#161616] px-3 py-2 rounded-sm border border-white/5">
+                          <button
+                            disabled={episodePage === 0}
+                            onClick={() => setEpisodePage(p => p - 1)}
+                            className={`transition-colors ${episodePage > 0 ? 'text-white hover:text-red-500' : 'text-white/5'}`}
+                          >
+                            <ChevronLeft size={18} />
+                          </button>
+                          <span className="text-[11px] font-bold tracking-widest text-white/80">
+                            {String(pageStart).padStart(3, '0')}-{String(pageEnd).padStart(3, '0')}
+                          </span>
+                          <button
+                            disabled={episodePage >= totalPages - 1}
+                            onClick={() => setEpisodePage(p => p + 1)}
+                            className={`transition-colors ${episodePage < totalPages - 1 ? 'text-white hover:text-red-500' : 'text-white/5'}`}
+                          >
+                            <ChevronRight size={18} />
+                          </button>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
 
                 <div className="flex-1 overflow-y-auto p-3 lg:p-4 custom-scrollbar bg-[#0d0d0d]">
-                  {episodeLayout === "list" && (
+                  {filteredEpisodes.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center p-12 text-white/30 animate-in fade-in duration-300">
+                      <Search size={32} className="mb-3 opacity-20" />
+                      <span className="text-[13px] font-medium">No episodes found</span>
+                      <button 
+                        onClick={() => setEpisodeSearchQuery("")}
+                        className="mt-4 text-[11px] text-red-500 hover:text-red-400 font-bold uppercase tracking-widest transition-colors"
+                      >
+                        Clear Search
+                      </button>
+                    </div>
+                  ) : episodeLayout === "list" && (
                     <div className="flex flex-col gap-2">
-                      {episodesList.slice(episodePage * EPISODES_PER_PAGE, (episodePage + 1) * EPISODES_PER_PAGE).map(ep => {
+                      {filteredEpisodes.slice(episodePage * EPISODES_PER_PAGE, (episodePage + 1) * EPISODES_PER_PAGE).map(ep => {
                         const epData = malEpisodes?.find(e => e.mal_id === ep);
                         const title = epData?.title || `Episode ${ep}`;
                         return (
@@ -1189,7 +1258,7 @@ export default function Watch() {
 
                   {episodeLayout === "detailed" && (
                     <div className="flex flex-col gap-3">
-                      {episodesList.slice(episodePage * EPISODES_PER_PAGE, (episodePage + 1) * EPISODES_PER_PAGE).map(ep => {
+                      {filteredEpisodes.slice(episodePage * EPISODES_PER_PAGE, (episodePage + 1) * EPISODES_PER_PAGE).map(ep => {
                         const epData = malEpisodes?.find(e => e.mal_id === ep);
                         // Match streamingEpisodes by episode number in title, not by index
                         const aniListEp = anime?.streamingEpisodes?.find(
@@ -1252,15 +1321,18 @@ export default function Watch() {
                                   </span>
                                 )}
                                 {(epData?.filler || epData?.recap) && (
-                                  <div className="flex items-center gap-1.5">
+                                  <div className="flex items-center gap-1.5 ml-auto">
                                     {epData.filler && <span className="px-1.5 py-0.5 bg-white/10 text-white/80 text-[8px] font-bold uppercase tracking-widest rounded-[2px]">Filler</span>}
                                     {epData.recap && <span className="px-1.5 py-0.5 bg-white/10 text-white/80 text-[8px] font-bold uppercase tracking-widest rounded-[2px]">Recap</span>}
                                   </div>
                                 )}
-                                {!epData?.score && !epData?.aired && !epData?.filler && !epData?.recap && (
-                                  <span>Episode Info</span>
-                                )}
                               </div>
+                              {/* Kitsu Episode Synopsis (Mini-Info) */}
+                              {(kitsuEpisodes?.[ep]?.description || kitsuEpisodes?.[String(ep)]?.description) && (
+                                <p className="text-[11px] text-white/30 line-clamp-2 leading-relaxed mt-2 group-hover:text-white/60 transition-colors">
+                                  {kitsuEpisodes?.[ep]?.description || kitsuEpisodes?.[String(ep)]?.description}
+                                </p>
+                              )}
                             </div>
                           </button>
                         );
@@ -1270,7 +1342,7 @@ export default function Watch() {
 
                   {episodeLayout === "grid" && (
                     <div className="grid grid-cols-5 sm:grid-cols-6 lg:grid-cols-4 xl:grid-cols-5 gap-2">
-                      {episodesList.slice(episodePage * EPISODES_PER_PAGE, (episodePage + 1) * EPISODES_PER_PAGE).map(ep => (
+                      {filteredEpisodes.slice(episodePage * EPISODES_PER_PAGE, (episodePage + 1) * EPISODES_PER_PAGE).map(ep => (
                         <button
                           key={ep}
                           onClick={() => setActiveEpisode(ep)}
@@ -1385,7 +1457,7 @@ export default function Watch() {
                         <span className="px-2 h-full flex items-center">{anime.episodes || "?"}</span>
                       </div>
                     )}
-                    <span className="bg-[#b0b0b0] text-[#111] h-6 flex items-center px-2 rounded-[2px]">{anime.episodes || "?"}</span>
+                    <span className="bg-[#b0b0b0] text-[#111] h-6 flex items-center px-2 rounded-[2px] font-medium">{resolvedInfo.rating || "?"}</span>
                     {anime.isAdult && <span className="bg-[#e3e3e3] text-black h-6 flex items-center px-2 rounded-[2px] uppercase">R</span>}
                     <span className="bg-white/10 text-white/80 h-6 flex items-center px-2 rounded-[2px] uppercase">{anime.format || "TV"}</span>
                     <span className="bg-white/10 text-white/80 h-6 flex items-center px-2 rounded-[2px] uppercase">{anime.duration ? `${anime.duration} min` : "? min"}</span>

@@ -20,11 +20,6 @@ export default function AnimeCard({ anime }) {
     // For finished or not yet released, use the total episodes field
     releasedEpisodes = anime.episodes || 0;
   }
-
-  // Only show "number" for ongoing/airing, show "current / total" for finished
-  const progress = (anime.status === "RELEASING" || anime.status === "UPCOMING")
-    ? (releasedEpisodes || "0")
-    : `${releasedEpisodes || 0} / ${totalEpisodes}`;
   const format = anime.format || "TV";
 
   return (
@@ -35,12 +30,12 @@ export default function AnimeCard({ anime }) {
       {/* Poster image area with wrapping for jutting tags */}
       <div className="relative">
         {/* Stacked Tags (Aligned to Left Corner) */}
-        <div className="absolute -top-1 left-0 flex flex-col z-40">
+        <div className="absolute -top-1 left-0 flex flex-col items-start z-40">
           <div className="bg-red-600 text-white text-[9px] font-black px-1.5 py-[3px] flex items-center justify-center min-w-[28px]">
             {format}
           </div>
-          <div className="bg-[#1a1a1a] text-white/90 text-[9px] font-black px-1.5 py-[3px] flex items-center justify-center min-w-[28px] border-t border-white/5">
-            ?
+          <div className="bg-[#1a1a1a] text-white/90 text-[10px] font-medium px-1.5 py-[3px] flex items-center justify-center border-t border-white/5 uppercase whitespace-nowrap">
+            {anime.rating || anime.ageRating || anime.ageRatingGuide || (anime.isAdult ? "18+" : "PG-13")}
           </div>
         </div>
 

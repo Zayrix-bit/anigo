@@ -308,11 +308,13 @@ export default function Navbar() {
                               {searchResults.map((anime) => {
                                 const currentEps = anime.nextAiringEpisode ? (anime.nextAiringEpisode.episode - 1) : anime.episodes;
                                 return (
-                                  <li
+                                  <Link
                                     key={anime.id}
+                                    to={`/watch/${anime.id}`}
                                     onClick={() => {
                                       closeSearchOverlay();
-                                      navigate(`/watch/${anime.id}`);
+                                      setSearchQuery("");
+                                      setShowSearchResults(false);
                                     }}
                                     className="flex items-start gap-4 p-3 hover:bg-white/[0.03] cursor-pointer transition-colors border-b border-white/5 last:border-0 group"
                                   >
@@ -345,7 +347,7 @@ export default function Navbar() {
                                         )}
                                       </div>
                                     </div>
-                                  </li>
+                                  </Link>
                                 );
                               })}
                             </ul>
