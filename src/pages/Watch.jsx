@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useParams, Link, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import { getAnimeDetails, getEpisodeTitles, getAniwatchId, getAniwatchEpisodes, checkDubAvailability, getJikanAnimeDetails, getAnikaiDetails, getAniwatchDetails, getSecondaryEpisodeMeta, getMalSyncMapping } from "../services/api";
+import { getAnimeDetails, getEpisodeTitles, getAniwatchId, getAniwatchEpisodes, getJikanAnimeDetails, getAnikaiDetails, getAniwatchDetails, getSecondaryEpisodeMeta, getMalSyncMapping } from "../services/api";
 import { resolveAnikaiMatch, resolveAniwatchMatch, scoreMetadata } from "../services/anikaiMapping";
 import { useLanguage } from "../context/LanguageContext";
 import { useUserList } from "../context/UserListContext";
@@ -81,8 +81,8 @@ export default function Watch() {
   const [autoSkip, setAutoSkip] = useState(() => getSafeStorage("autoSkip", false));
 
   const [episodePage, setEpisodePage] = useState(0);
+  const [hasSub, setHasSub] = useState(true); // Default to true until verified
   const [hasDub, setHasDub] = useState(false);
-  const [verifiedDubAvailable, setVerifiedDubAvailable] = useState(false);
   const [isDescExpanded, setIsDescExpanded] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [episodeSearchQuery, setEpisodeSearchQuery] = useState("");
@@ -150,13 +150,6 @@ export default function Watch() {
     staleTime: 0,
   });
 
-  const { data: dubInfo } = useQuery({
-    queryKey: ["dubAvailability", id],
-    queryFn: () => checkDubAvailability(Number(id)),
-    enabled: !!id,
-    staleTime: 1000 * 60 * 60 * 6,
-  });
-
   const RECS_PER_PAGE = 12;
   const [recPageIndex, setRecPageIndex] = useState(0);
   const [isRecAnimating, setIsRecAnimating] = useState(false);
@@ -210,13 +203,51 @@ export default function Watch() {
     setTimeout(() => setIsRecAnimating(false), 400);
   };
 
+  // Verification logic for SUB/DUB sources (Strict Validation)
   useEffect(() => {
-    if (dubInfo && typeof dubInfo.hasDub === "boolean") {
-      setHasDub(dubInfo.hasDub);
-    } else {
-      setHasDub(false);
-    }
-  }, [dubInfo]);
+    if (!activeEpisode || !anikaiEpisodes.length) return;
+
+    let cancelled = false;
+    const verifySources = async () => {
+      const ep = anikaiEpisodes.find(e => String(e.number) === String(activeEpisode));
+      if (!ep) return;
+
+      const token = ep.id;
+      try {
+        // Fetch both SUB and DUB sources in parallel for strict validation
+        const [subRes, dubRes] = await Promise.allSettled([
+          axios.get(`${PYTHON_API}/api/anikai/stream/${token}`, { params: { lang: 'sub' } }),
+          axios.get(`${PYTHON_API}/api/anikai/stream/${token}`, { params: { lang: 'dub' } })
+        ]);
+
+        if (cancelled) return;
+
+        // Strict Validation: Check Array.isArray(data.sources) and data.sources.length > 0
+        const subData = subRes.status === 'fulfilled' ? subRes.value.data : null;
+        const dubData = dubRes.status === 'fulfilled' ? dubRes.value.data : null;
+
+        const subAvailable = Array.isArray(subData?.sources) && subData.sources.length > 0;
+        const dubAvailable = Array.isArray(dubData?.sources) && dubData.sources.length > 0;
+
+        console.info(`[Source Verification] Ep ${activeEpisode}: SUB=${subAvailable}, DUB=${dubAvailable}`);
+
+        setHasSub(subAvailable);
+        setHasDub(dubAvailable);
+
+        // Fallback: If current playerLang is not available, switch to one that is
+        if (playerLang === "dub" && !dubAvailable && subAvailable) {
+          setPlayerLang("sub");
+        } else if (playerLang === "sub" && !subAvailable && dubAvailable) {
+          setPlayerLang("dub");
+        }
+      } catch (err) {
+        console.error("[Source Verification] Failed:", err);
+      }
+    };
+
+    verifySources();
+    return () => { cancelled = true; };
+  }, [activeEpisode, anikaiEpisodes, PYTHON_API, playerLang]);
 
   // MAL Episode Titles (lightweight — only for episode names)
   const { data: malEpisodes } = useQuery({
@@ -768,6 +799,15 @@ export default function Watch() {
             setStreamLoading(false);
             return;
           }
+
+          // Strict validation: Ensure sources exist before proceeding
+          if (!Array.isArray(data.sources) || data.sources.length === 0) {
+            console.error(`[Player] No ${playerLang} sources found in response:`, data);
+            setFetchError(`No ${playerLang.toUpperCase()} sources found for this episode.`);
+            setStreamLoading(false);
+            return;
+          }
+
           url = data.iframe_url || (data.sources?.[0]?.url);
           console.info(`[Player] Resolved Anikai URL: ${url}`);
         }
@@ -936,7 +976,13 @@ export default function Watch() {
                     ) : (
                       /* ERROR / NO STREAM STATE */
                       <div className="animate-in fade-in zoom-in-95 duration-300">
-                        {/* No text badge here, just the background banner is visible */}
+                        {(!hasSub && !hasDub) && (
+                          <div className="flex flex-col items-center gap-3">
+                            <Frown size={48} className="text-white/20" />
+                            <p className="text-white/60 text-sm font-bold uppercase tracking-widest">No Sources Available</p>
+                            <p className="text-white/20 text-[10px] max-w-[200px]">This episode might not be available on this server yet.</p>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1085,14 +1131,16 @@ export default function Watch() {
               <div className="flex flex-col sm:flex-row items-center gap-4">
                 {/* Language Selector */}
                 <div className="flex bg-[#161616] p-1 rounded-sm border border-white/5">
-                  <button
-                    onClick={() => setPlayerLang("sub")}
-                    className={`flex items-center gap-2 px-5 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-sm transition-all ${playerLang === "sub" ? "bg-red-600 text-white shadow-lg" : "text-white/40 hover:text-white"
-                      }`}
-                  >
-                    <MessageSquare size={12} fill="currentColor" className="opacity-50" />
-                    Sub
-                  </button>
+                  {hasSub && (
+                    <button
+                      onClick={() => setPlayerLang("sub")}
+                      className={`flex items-center gap-2 px-5 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-sm transition-all ${playerLang === "sub" ? "bg-red-600 text-white shadow-lg" : "text-white/40 hover:text-white"
+                        }`}
+                    >
+                      <MessageSquare size={12} fill="currentColor" className="opacity-50" />
+                      Sub
+                    </button>
+                  )}
                   {hasDub && (
                     <button
                       onClick={() => setPlayerLang("dub")}
