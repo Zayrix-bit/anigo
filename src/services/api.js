@@ -149,6 +149,7 @@ export const BROWSE_QUERY = `
         }
         averageScore
         status
+        countryOfOrigin
         isAdult
       }
     }

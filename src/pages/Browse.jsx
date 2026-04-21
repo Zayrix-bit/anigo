@@ -207,12 +207,16 @@ export default function Browse() {
       if (filters.include.length > 0) {
         if (!filters.include.some(inc => allLabels.includes(GENRE_MAP[inc] || inc))) return false;
       }
+      if (filters.country.length > 0) {
+        const origin = anime.countryOfOrigin || "";
+        if (!filters.country.includes(origin)) return false;
+      }
       if (filters.language.includes('DUB')) {
         if (!anime.dub) return false;
       }
       return true;
     });
-  }, [result.media, filters.include, filters.exclude, filters.language]);
+  }, [result.media, filters.include, filters.exclude, filters.country, filters.language]);
 
   const hasNextPage = result.pageInfo?.hasNextPage || false;
 

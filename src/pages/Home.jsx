@@ -103,23 +103,17 @@ export default function Home() {
       }
 
       if (activeSeasonTab === "China") {
-        const date = new Date();
-        const month = date.getMonth();
-        const year = date.getFullYear();
-
-        let season = "WINTER";
-        if (month >= 2 && month <= 4) season = "SPRING";
-        else if (month >= 5 && month <= 7) season = "SUMMER";
-        else if (month >= 8 && month <= 10) season = "FALL";
-
-        return await getBrowseAnime({
+        const chinaRes = await getBrowseAnime({
           page: seasonPage,
           perPage: cardsPerPage,
-          season,
-          seasonYear: year,
           country: "CN",
           sort: ["POPULARITY_DESC"],
         });
+
+        return {
+          ...chinaRes,
+          media: (chinaRes.media || []).filter((anime) => anime.countryOfOrigin === "CN"),
+        };
       }
 
       return await getPopularThisSeason(seasonPage);
@@ -158,6 +152,7 @@ export default function Home() {
             setActiveSeasonTab(tab);
             setSeasonPage(1);
           }}
+          showDubBadge={false}
         />
         <Pagination 
           currentPage={seasonPage} 
@@ -171,7 +166,7 @@ export default function Home() {
 
       {/* Trending Now */}
       <div id="trending-now">
-        <AnimeRow title="TRENDING NOW" data={trending} isLoading={loadingTrending} limit={24} />
+        <AnimeRow title="TRENDING NOW" data={trending} isLoading={loadingTrending} limit={24} showDubBadge={false} />
         <Pagination 
           currentPage={trendingPage} 
           totalPages={trendingInfo.lastPage > 4 ? 4 : trendingInfo.lastPage} 
