@@ -88,6 +88,17 @@ export default function Watch() {
   const [episodeSearchQuery, setEpisodeSearchQuery] = useState("");
   const [isEpisodeSearchOpen, setIsEpisodeSearchOpen] = useState(false);
 
+  // Sync Focus Mode to Body class for global styling overrides
+  useEffect(() => {
+    if (isFocusMode) {
+      document.body.classList.add("focus-mode");
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      document.body.classList.remove("focus-mode");
+    }
+    return () => document.body.classList.remove("focus-mode");
+  }, [isFocusMode]);
+
   // Performance: In-memory caches
   const streamCache = useRef(new Map());
 
@@ -1020,33 +1031,35 @@ export default function Watch() {
     <div className={`min-h-screen bg-[#0a0a0a] font-sans pb-20 text-white relative ${isFocusMode ? "overflow-hidden" : ""}`}>
       {!isFocusMode && <Navbar />}
 
-      {/* Focus Mode Curtain */}
+      {/* Focus Mode Curtain / Background */}
       {isFocusMode && (
         <div
-          className="fixed inset-0 bg-black/90 backdrop-blur-sm z-30 transition-all duration-700 animate-in fade-in"
+          className="fixed inset-0 bg-black/95 backdrop-blur-sm z-[35] transition-all duration-700 animate-in fade-in cursor-pointer"
           onClick={() => setIsFocusMode(false)}
         />
       )}
 
-      <main className="pt-[60px] max-w-[1720px] mx-auto px-2 lg:px-4">
+      <main className={`${isFocusMode ? 'pt-0' : 'pt-[60px]'} max-w-[1720px] mx-auto px-2 lg:px-4 transition-all duration-500`}>
 
         {/* 1. Breadcrumbs */}
-        <nav className="flex items-center gap-2 py-2 lg:py-4 text-[11px] lg:text-[12px] font-bold text-[#666] overflow-x-auto whitespace-nowrap scrollbar-hide">
-          <Link to="/home" className="hover:text-white transition-colors">Home</Link>
-          <span className="opacity-30">/</span>
-          <span className="hover:text-white transition-colors uppercase cursor-pointer">{anime.format || "TV"}</span>
-          <span className="opacity-30">/</span>
-          <span className="text-white/90 truncate">{getTitle(anime.title)}</span>
-        </nav>
+        {!isFocusMode && (
+          <nav className="flex items-center gap-2 py-2 lg:py-4 text-[11px] lg:text-[12px] font-bold text-[#666] overflow-x-auto whitespace-nowrap scrollbar-hide animate-in slide-in-from-top-2">
+            <Link to="/home" className="hover:text-white transition-colors">Home</Link>
+            <span className="opacity-30">/</span>
+            <span className="hover:text-white transition-colors uppercase cursor-pointer">{anime.format || "TV"}</span>
+            <span className="opacity-30">/</span>
+            <span className="text-white/90 truncate">{getTitle(anime.title)}</span>
+          </nav>
+        )}
 
         {/* 2. Main Media Grid (Laptop/Desktop) */}
-        <div className={`flex flex-col lg:grid lg:gap-6 ${isFocusMode ? 'lg:grid-cols-1' : 'lg:grid-cols-4'}`}>
+        <div className={`flex flex-col lg:grid lg:gap-6 ${isFocusMode ? 'lg:grid-cols-1' : 'lg:grid-cols-4'} transition-all duration-500`}>
 
           {/* LEFT COLUMN: Player + Controls */}
-          <div className={`${isFocusMode ? 'lg:col-span-1' : 'lg:col-span-3'} space-y-1`}>
+          <div className={`${isFocusMode ? 'lg:col-span-1 fixed inset-0 z-40 flex flex-col items-center justify-center p-4 lg:p-12 pointer-events-none' : 'lg:col-span-3 space-y-1'}`}>
 
-            {/* Video Player */}
-            <section className="relative w-full aspect-video bg-[#000] rounded-sm overflow-hidden border border-white/5 shadow-2xl">
+            {/* Video Player Container */}
+            <section className={`relative w-full aspect-video bg-[#000] rounded-sm overflow-hidden border border-white/5 shadow-2xl transition-all duration-500 ${isFocusMode ? 'max-w-[90vw] max-h-[85vh] pointer-events-auto ring-1 ring-white/10' : ''}`}>
               {/* Integrated Loader & Error Overlay with Anime Background */}
               {((streamLoading || (streamUrl && !iframeLoaded)) || (!streamLoading && (!streamUrl || fetchError))) && (
                 <div className="absolute inset-0 z-20 group">
@@ -1100,7 +1113,7 @@ export default function Watch() {
             </section>
 
             {/* Premium Action Toolbar (Matches Image) */}
-            <section className="flex flex-wrap items-center justify-between py-3 border-b border-white/5 bg-[#0d0d0d] px-4 shadow-lg gap-y-4 lg:gap-y-0">
+            <section className={`flex flex-wrap items-center justify-between py-3 border-b border-white/5 bg-[#0d0d0d] px-4 shadow-lg gap-y-4 lg:gap-y-0 transition-all duration-500 ${isFocusMode ? 'fixed bottom-8 left-1/2 -translate-x-1/2 z-50 rounded-full border border-white/10 px-8 py-4 opacity-0 hover:opacity-100 bg-black/60 backdrop-blur-md pointer-events-auto min-w-[600px]' : ''}`}>
               <div className="flex items-center gap-5 lg:gap-8">
                 {/* Focus */}
                 <button
@@ -1166,110 +1179,118 @@ export default function Watch() {
                   </button>
                 </div>
 
-                <div className="relative">
-                  <button
-                    onClick={() => setAddingAction(!addingAction)}
-                    className={`flex items-center gap-2 transition-all ${existingEntry ? 'text-red-600' : 'text-white/40 hover:text-white'}`}
-                  >
-                    <Heart size={16} fill={existingEntry ? "currentColor" : "none"} />
-                    <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">{existingEntry ? existingEntry.status : 'Add to list'}</span>
-                  </button>
+                {!isFocusMode && (
+                  <>
+                    <div className="relative">
+                      <button
+                        onClick={() => setAddingAction(!addingAction)}
+                        className={`flex items-center gap-2 transition-all ${existingEntry ? 'text-red-600' : 'text-white/40 hover:text-white'}`}
+                      >
+                        <Heart size={16} fill={existingEntry ? "currentColor" : "none"} />
+                        <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">{existingEntry ? existingEntry.status : 'Add to list'}</span>
+                      </button>
 
-                  {addingAction && (
-                    <div className="absolute bottom-full right-0 mb-3 w-36 bg-[#161616] border border-white/5 rounded-[2px] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 z-50 flex flex-col">
-                      {['Watching', 'On-Hold', 'Planning', 'Completed', 'Dropped'].map((status) => (
-                        <button
-                          key={status}
-                          onClick={() => handleAddToList(status)}
-                          className={`w-full text-left px-4 py-2.5 text-[12px] font-medium transition-colors ${(existingEntry ? existingEntry.status : selectStatus) === status
-                            ? 'text-white border-l-2 border-red-600 bg-white/5'
-                            : 'text-white/60 hover:text-white hover:bg-[#222]'
-                            }`}
-                        >
-                          {status}
-                        </button>
-                      ))}
-                      {existingEntry && (
-                        <button
-                          onClick={() => {
-                            removeFromList(anime.id);
-                            setAddingAction(false);
-                          }}
-                          className="w-full text-left px-4 py-2.5 text-[12px] font-medium transition-colors text-red-500 hover:text-white hover:bg-red-600/20 border-t border-white/5"
-                        >
-                          Remove
-                        </button>
+                      {addingAction && (
+                        <div className="absolute bottom-full right-0 mb-3 w-36 bg-[#161616] border border-white/5 rounded-[2px] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 z-50 flex flex-col">
+                          {['Watching', 'On-Hold', 'Planning', 'Completed', 'Dropped'].map((status) => (
+                            <button
+                              key={status}
+                              onClick={() => handleAddToList(status)}
+                              className={`w-full text-left px-4 py-2.5 text-[12px] font-medium transition-colors ${(existingEntry ? existingEntry.status : selectStatus) === status
+                                ? 'text-white border-l-2 border-red-600 bg-white/5'
+                                : 'text-white/60 hover:text-white hover:bg-[#222]'
+                                }`}
+                            >
+                              {status}
+                            </button>
+                          ))}
+                          {existingEntry && (
+                            <button
+                              onClick={() => {
+                                removeFromList(anime.id);
+                                setAddingAction(false);
+                              }}
+                              className="w-full text-left px-4 py-2.5 text-[12px] font-medium transition-colors text-red-500 hover:text-white hover:bg-red-600/20 border-t border-white/5"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
-                </div>
 
-                <button
-                  onClick={handleReport}
-                  className={`flex items-center gap-2 transition-all ${reportSuccess ? 'text-green-500' : 'text-white/40 hover:text-white'}`}
-                >
-                  <Flag size={16} />
-                  <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">{reportSuccess ? 'Reported!' : 'Report'}</span>
-                </button>
+                    <button
+                      onClick={handleReport}
+                      className={`flex items-center gap-2 transition-all ${reportSuccess ? 'text-green-500' : 'text-white/40 hover:text-white'}`}
+                    >
+                      <Flag size={16} />
+                      <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">{reportSuccess ? 'Reported!' : 'Report'}</span>
+                    </button>
+                  </>
+                )}
               </div>
             </section>
-            <section className="flex flex-col md:flex-row md:items-center justify-between py-4 lg:py-6 gap-4 lg:gap-6">
-              <div className="text-center md:text-left">
-                <p className="text-[13px] lg:text-[14px] font-bold text-white/70 tracking-wide">
-                  You are watching <span className="text-red-600">Episode {activeEpisode}</span>
-                </p>
-                <p className="text-[9px] lg:text-[10px] text-white/20 font-bold uppercase tracking-[0.2em] mt-1">
-                  Switch servers if the current link is unstable.
-                </p>
-              </div>
-
-              <div className="flex flex-col sm:flex-row items-center gap-4">
-                {/* Language Selector */}
-                <div className="flex bg-[#161616] p-1 rounded-sm border border-white/5">
-                  {hasSub && (
-                    <button
-                      onClick={() => setPlayerLang("sub")}
-                      className={`flex items-center gap-2 px-5 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-sm transition-all ${playerLang === "sub" ? "bg-red-600 text-white shadow-lg" : "text-white/40 hover:text-white"
-                        }`}
-                    >
-                      <MessageSquare size={12} fill="currentColor" className="opacity-50" />
-                      Sub
-                    </button>
-                  )}
-                  {hasDub && (
-                    <button
-                      onClick={() => setPlayerLang("dub")}
-                      className={`flex items-center gap-2 px-5 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-sm transition-all ${playerLang === "dub" ? "bg-red-600 text-white shadow-lg" : "text-white/40 hover:text-white"
-                        }`}
-                    >
-                      <Mic size={12} fill="currentColor" className="opacity-50" />
-                      Dub
-                    </button>
-                  )}
+            {!isFocusMode && (
+              <section className="flex flex-col md:flex-row md:items-center justify-between py-4 lg:py-6 gap-4 lg:gap-6">
+                <div className="text-center md:text-left">
+                  <p className="text-[13px] lg:text-[14px] font-bold text-white/70 tracking-wide">
+                    You are watching <span className="text-red-600">Episode {activeEpisode}</span>
+                  </p>
+                  <p className="text-[9px] lg:text-[10px] text-white/20 font-bold uppercase tracking-[0.2em] mt-1">
+                    Switch servers if the current link is unstable.
+                  </p>
                 </div>
 
-                {/* Servers List */}
-                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar max-w-[300px]">
-                  {[1, 2, 3, 4].map((num) => (
-                    <button
-                      key={num}
-                      onClick={() => setActiveServer(num)}
-                      className={`px-4 py-2 text-[10px] font-bold uppercase tracking-widest rounded-sm border transition-all shrink-0 ${activeServer === num
-                        ? "bg-red-600 text-white border-red-500 shadow-xl shadow-red-900/20"
-                        : "bg-[#111] text-white/30 border-white/5 hover:bg-[#161616] hover:text-white/70"
-                        }`}
-                    >
-                      S{num}
-                    </button>
-                  ))}
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                  {/* Language Selector */}
+                  <div className="flex bg-[#161616] p-1 rounded-sm border border-white/5">
+                    {hasSub && (
+                      <button
+                        onClick={() => setPlayerLang("sub")}
+                        className={`flex items-center gap-2 px-5 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-sm transition-all ${playerLang === "sub" ? "bg-red-600 text-white shadow-lg" : "text-white/40 hover:text-white"
+                          }`}
+                      >
+                        <MessageSquare size={12} fill="currentColor" className="opacity-50" />
+                        Sub
+                      </button>
+                    )}
+                    {hasDub && (
+                      <button
+                        onClick={() => setPlayerLang("dub")}
+                        className={`flex items-center gap-2 px-5 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-sm transition-all ${playerLang === "dub" ? "bg-red-600 text-white shadow-lg" : "text-white/40 hover:text-white"
+                          }`}
+                      >
+                        <Mic size={12} fill="currentColor" className="opacity-50" />
+                        Dub
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Servers List */}
+                  <div className="flex items-center gap-2 overflow-x-auto no-scrollbar max-w-[300px]">
+                    {[1, 2, 3, 4].map((num) => (
+                      <button
+                        key={num}
+                        onClick={() => setActiveServer(num)}
+                        className={`px-4 py-2 text-[10px] font-bold uppercase tracking-widest rounded-sm border transition-all shrink-0 ${activeServer === num
+                          ? "bg-red-600 text-white border-red-500 shadow-xl shadow-red-900/20"
+                          : "bg-[#111] text-white/30 border-white/5 hover:bg-[#161616] hover:text-white/70"
+                          }`}
+                      >
+                        S{num}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </section>
+              </section>
+            )}
 
             {/* Next Episode Banner - Moved here for better visibility */}
-            <div className="border-t border-white/5 bg-[#0d0d0d]/50">
-              <NextEpisodeBanner anime={anime} />
-            </div>
+            {!isFocusMode && (
+              <div className="border-t border-white/5 bg-[#0d0d0d]/50">
+                <NextEpisodeBanner anime={anime} />
+              </div>
+            )}
           </div>
 
           {/* RIGHT COLUMN: Episodes Sidebar */}
