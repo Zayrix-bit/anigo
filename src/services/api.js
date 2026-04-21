@@ -741,15 +741,15 @@ export async function checkDubAvailability(anilistId) {
 /**
  * Fetch recently dubbed episodes from the native Python backend.
  */
-export async function getRecentDubs(page = 1, limit = 24) {
+export async function getRecentDubs(page = 1) {
   try {
     const { data } = await axios.get(`${PYTHON_API}/api/python/recent-dub`, {
-      params: { page, limit }
+      params: { page }
     });
     return data;
   } catch (err) {
     console.error("Recent Dubs fetch failed:", err);
-    return { media: [], pageInfo: { lastPage: 1 } };
+    return { media: [], pageInfo: { hasNextPage: false } };
   }
 }
 

@@ -127,7 +127,6 @@ export default function Browse() {
         const collected = [];
         const seen = new Set();
         let sourcePage = 1;
-        let sourceLastPage = 1;
         let guard = 0;
 
         // Build a stable paginated stream so each browse page can still render 36 cards.
@@ -144,17 +143,14 @@ export default function Browse() {
             collected.push({ ...anime, dub: true });
           });
 
-          sourceLastPage = dubRes.pageInfo?.lastPage || sourceLastPage;
-          if (sourcePage >= sourceLastPage) break;
+          if (!dubRes.pageInfo?.hasNextPage) break;
           sourcePage += 1;
           guard += 1;
         }
 
         const pageMedia = collected.slice(startIndex, endIndex);
-        const hasNextDubPage = collected.length > endIndex || sourcePage < sourceLastPage;
-        const dubLastPage = hasNextDubPage
-          ? Math.max(filters.page + 1, Math.ceil(Math.max(collected.length, endIndex) / cardsPerPage))
-          : Math.max(1, Math.ceil(collected.length / cardsPerPage));
+        const hasNextDubPage = collected.length > endIndex || (sourcePage > 1 && guard < 20);
+        const dubLastPage = hasNextDubPage ? filters.page + 1 : filters.page;
 
         return {
           media: pageMedia,

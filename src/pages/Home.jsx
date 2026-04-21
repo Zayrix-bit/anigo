@@ -42,7 +42,6 @@ export default function Home() {
     const collected = [];
     const seen = new Set();
     let sourcePage = 1;
-    let sourceLastPage = 1;
     let guard = 0;
 
     while (collected.length < endIndex && guard < 20) {
@@ -58,17 +57,14 @@ export default function Home() {
         collected.push(anime);
       });
 
-      sourceLastPage = dubRes.pageInfo?.lastPage || sourceLastPage;
-      if (sourcePage >= sourceLastPage) break;
+      if (!dubRes.pageInfo?.hasNextPage) break;
       sourcePage += 1;
       guard += 1;
     }
 
     const pageMedia = collected.slice(startIndex, endIndex);
-    const hasNextDubPage = collected.length > endIndex || sourcePage < sourceLastPage;
-    const dubLastPage = hasNextDubPage
-      ? Math.max(page + 1, Math.ceil(Math.max(collected.length, endIndex) / cardsPerPage))
-      : Math.max(1, Math.ceil(collected.length / cardsPerPage));
+    const hasNextDubPage = collected.length > endIndex || (sourcePage > 1 && guard < 20);
+    const dubLastPage = hasNextDubPage ? page + 1 : page;
 
     return {
       media: pageMedia,

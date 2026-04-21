@@ -539,7 +539,7 @@ export default function Watch() {
     } else if (filteredEpisodes.length === 0 && episodePage !== 0) {
       setEpisodePage(0);
     }
-  }, [filteredEpisodes, EPISODES_PER_PAGE]);
+  }, [filteredEpisodes, episodePage, EPISODES_PER_PAGE]);
 
   const [stableSeasons, setStableSeasons] = useState([]);
 
@@ -819,7 +819,7 @@ export default function Watch() {
             setStreamUrl(finalUrl);
             console.log(`[Player] Final Stream URL (Fallback) injected: ${finalUrl}`);
           }
-        } else if (!fetchError) {
+        } else {
           setFetchError("Stream link not found for this server.");
         }
       } catch (err) {
@@ -832,7 +832,7 @@ export default function Watch() {
     fetchStream();
 
     return () => { cancelled = true; };
-  }, [id, anime?.id, activeEpisode, playerLang, activeServer, aniwatchEps, anikaiEpisodes, PYTHON_API, autoPlay]);
+  }, [id, anime?.id, anime?.idMal, activeEpisode, playerLang, activeServer, aniwatchEps, anikaiEpisodes, PYTHON_API, autoPlay]);
 
   const handleReport = () => {
     setReportSuccess(true);
