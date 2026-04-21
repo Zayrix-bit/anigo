@@ -2,7 +2,7 @@ import AnimeCard from "../common/AnimeCard";
 import SkeletonCard from "../common/SkeletonCard";
 import { ChevronDown } from "lucide-react";
 
-export default function AnimeRow({ title, data, isLoading, limit = 6, tabs = [], activeTab = "", onTabChange, showDubBadge = true }) {
+export default function AnimeRow({ title, data, isLoading, limit = 6, tabs = [], activeTab = "", onTabChange }) {
   const hasData = data && data.length > 0;
 
   return (
@@ -53,7 +53,7 @@ export default function AnimeRow({ title, data, isLoading, limit = 6, tabs = [],
         ) : hasData ? (
           data.slice(0, limit).map((anime, i) => (
             <div key={`${anime.id}-${i}`} className={i >= 20 ? 'hidden sm:block' : 'block'}>
-              <AnimeCard anime={anime} showDubBadge={showDubBadge} />
+              <AnimeCard anime={anime} />
             </div>
           ))
         ) : (

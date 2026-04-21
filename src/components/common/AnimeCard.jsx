@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLanguage } from "../../context/LanguageContext";
 import { useNavigate } from "react-router-dom";
-export default function AnimeCard({ anime, showDubBadge = true }) {
+export default function AnimeCard({ anime }) {
   const [imgError, setImgError] = useState(false);
   const { getTitle } = useLanguage();
   const navigate = useNavigate();
@@ -33,11 +33,6 @@ export default function AnimeCard({ anime, showDubBadge = true }) {
           <div className="bg-red-600 text-white text-[9px] font-black px-1.5 py-[3px] flex items-center justify-center min-w-[28px]">
             {format}
           </div>
-          {showDubBadge && anime.dub && (
-            <div className="bg-white text-red-600 text-[8px] font-black px-1.5 py-[2px] flex items-center justify-center rounded-sm shadow-xl border border-red-600/20">
-              DUB
-            </div>
-          )}
         </div>
 
         {/* 18+ Badge (Top Right Corner - Professional Red) */}

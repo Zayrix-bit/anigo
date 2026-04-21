@@ -840,7 +840,7 @@ export default function Browse() {
             </div>
           ) : animeList.length > 0 ? (
             <div className="grid grid-cols-6 gap-x-5 gap-y-10">
-              {animeList.map(anime => <AnimeCard key={anime.id} anime={anime} showDubBadge={true} />)}
+              {animeList.map(anime => <AnimeCard key={anime.id} anime={anime} />)}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-48 text-center">

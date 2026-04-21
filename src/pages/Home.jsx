@@ -148,7 +148,6 @@ export default function Home() {
             setActiveSeasonTab(tab);
             setSeasonPage(1);
           }}
-          showDubBadge={false}
         />
         <Pagination 
           currentPage={seasonPage} 
@@ -162,7 +161,7 @@ export default function Home() {
 
       {/* Trending Now */}
       <div id="trending-now">
-        <AnimeRow title="TRENDING NOW" data={trending} isLoading={loadingTrending} limit={24} showDubBadge={false} />
+        <AnimeRow title="TRENDING NOW" data={trending} isLoading={loadingTrending} limit={24} />
         <Pagination 
           currentPage={trendingPage} 
           totalPages={trendingInfo.lastPage > 4 ? 4 : trendingInfo.lastPage} 
