@@ -835,11 +835,11 @@ export default function Browse() {
         {/* Results */}
         <div className="relative min-h-[500px]">
           {(isLoading || (isFetching && animeList.length === 0)) ? (
-            <div className="grid grid-cols-6 gap-x-5 gap-y-10 opacity-40">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-3 gap-y-6 md:gap-x-5 md:gap-y-10 opacity-40">
               {Array.from({ length: 36 }).map((_, i) => <SkeletonCard key={i} />)}
             </div>
           ) : animeList.length > 0 ? (
-            <div className="grid grid-cols-6 gap-x-5 gap-y-10">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-3 gap-y-6 md:gap-x-5 md:gap-y-10">
               {animeList.map(anime => <AnimeCard key={anime.id} anime={anime} />)}
             </div>
           ) : (
