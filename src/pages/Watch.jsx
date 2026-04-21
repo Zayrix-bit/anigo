@@ -81,7 +81,7 @@ export default function Watch() {
   const [autoSkip, setAutoSkip] = useState(() => getSafeStorage("autoSkip", false));
 
   const [episodePage, setEpisodePage] = useState(0);
-  const [hasSub, setHasSub] = useState(true); // Default to true until verified
+  const [hasSub, setHasSub] = useState(false); // Strict: Hide until verified
   const [hasDub, setHasDub] = useState(false);
   const [isDescExpanded, setIsDescExpanded] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
@@ -215,9 +215,18 @@ export default function Watch() {
 
   // Verification logic for SUB/DUB sources (Strict Validation & Optimized)
   useEffect(() => {
-    if (!activeEpisode || !anikaiEpisodes.length) return;
+    if (!activeEpisode || !anikaiEpisodes.length) {
+      setHasSub(false);
+      setHasDub(false);
+      return;
+    }
 
     let cancelled = false;
+
+    // Reset states immediately on episode change to prevent stale UI
+    setHasSub(false);
+    setHasDub(false);
+
     const verifySources = async () => {
       const ep = anikaiEpisodes.find(e => String(e.number) === String(activeEpisode));
       if (!ep) return;
@@ -229,41 +238,53 @@ export default function Watch() {
         // 1. Check cache first
         if (streamCache.current.has(cacheKey)) {
           const data = streamCache.current.get(cacheKey);
-          return Array.isArray(data?.sources) && data.sources.length > 0;
+          return Array.isArray(data?.sources) && data.sources.length > 0 && data.lang === lang;
         }
         // 2. Fetch if not cached
         try {
-          const resp = await axios.get(`${PYTHON_API}/api/anikai/stream/${token}`, { params: { lang } });
+          const resp = await axios.get(`${PYTHON_API}/api/anikai/stream/${token}`, { 
+            params: { lang, strict: true } 
+          });
           const data = resp.data;
-          if (data?.success && Array.isArray(data.sources) && data.sources.length > 0) {
+          // STRICT VALIDATION: sources must be array and length > 0, and language must match
+          const isValid = data?.success && Array.isArray(data.sources) && data.sources.length > 0 && data.lang === lang;
+          if (isValid) {
             streamCache.current.set(cacheKey, data);
             return true;
           }
         } catch (err) {
-          console.warn("[Source Verification] Lang fetch failed:", lang, err);
+          console.warn(`[Source Verification] ${lang.toUpperCase()} fetch failed:`, err.message);
         }
         return false;
       };
 
       // Parallel Fetch: Request both but update state as soon as each resolves
-      checkLang('sub').then(available => {
-        if (!cancelled) setHasSub(available);
-      }).catch(err => console.error("[Source Verification] SUB error:", err));
+      const [subAvailable, dubAvailable] = await Promise.all([
+        checkLang('sub'),
+        checkLang('dub')
+      ]);
 
-      checkLang('dub').then(available => {
-        if (!cancelled) {
-          setHasDub(available);
-          // Auto-fallback: If current lang is DUB but not available, switch to SUB
-          if (playerLang === "dub" && !available) {
-            setPlayerLang("sub");
-          }
-        }
-      }).catch(err => console.error("[Source Verification] DUB error:", err));
+      if (cancelled) return;
+
+      console.info(`[Source Verification] Ep ${activeEpisode} Result: SUB=${subAvailable}, DUB=${dubAvailable}`);
+
+      setHasSub(subAvailable);
+      setHasDub(dubAvailable);
+
+      // Auto-fallback logic:
+      // 1. If current lang is DUB but not available, switch to SUB if SUB exists
+      if (playerLang === "dub" && !dubAvailable && subAvailable) {
+        setPlayerLang("sub");
+      }
+      // 2. If current lang is SUB but not available, switch to DUB if DUB exists
+      else if (playerLang === "sub" && !subAvailable && dubAvailable) {
+        setPlayerLang("dub");
+      }
     };
 
     verifySources();
     return () => { cancelled = true; };
-  }, [activeEpisode, anikaiEpisodes, PYTHON_API, playerLang]); // Re-added playerLang for fallback safety
+  }, [activeEpisode, anikaiEpisodes, PYTHON_API]); // Removed playerLang to avoid re-triggering during fallback
 
   // MAL Episode Titles (lightweight — only for episode names)
   const { data: malEpisodes } = useQuery({
@@ -842,7 +863,8 @@ export default function Watch() {
           if (streamCache.current.has(cacheKey)) {
             const cachedData = streamCache.current.get(cacheKey);
             const url = cachedData.iframe_url || (cachedData.sources?.[0]?.url);
-            if (url) {
+            // Verify cache matches requested language
+            if (url && cachedData.lang === playerLang) {
               const finalUrl = `${url}#lang=${playerLang}`;
               setStreamUrl(finalUrl);
               setStreamLoading(false);
@@ -885,7 +907,7 @@ export default function Watch() {
             // 2. Parallel Fetch: Request both SUB and DUB to populate cache and speed up toggle
             // But only await the requested language to show UI as fast as possible
             const fetchLang = (lang) => axios.get(`${PYTHON_API}/api/anikai/stream/${token}`, {
-              params: { lang }
+              params: { lang, strict: true }
             }).then(res => res.data).catch(() => null);
 
             // Start both in parallel

@@ -940,10 +940,18 @@ def api_anikai_episodes(ani_id):
 @api_response
 def api_anikai_stream(ep_token):
     lang = request.args.get("lang", "sub").lower()
+    # Support strict matching (no fallback to other languages)
+    strict = request.args.get("strict", "false").lower() == "true"
 
     servers = anikai.get_links(ep_token)
     if not servers:
         return {"error": "No servers found for this episode"}, 404
+
+    # Filter by language if strict is requested
+    if strict:
+        servers = [s for s in servers if (s.get("lang") or "sub").lower() == lang]
+        if not servers:
+            return {"error": f"No {lang} sources found for this episode"}, 404
 
     def get_score(server):
         name = server.get("name", "").lower()
@@ -962,11 +970,16 @@ def api_anikai_stream(ep_token):
     last_err = "Failed to resolve any source"
     for server in sorted_servers:
         try:
-            log.info("Anikai: Resolving %s for requested lang: %s...", server["name"], lang)
+            server_lang = (server.get("lang") or "sub").lower()
+            log.info("Anikai: Resolving %s (%s) for requested lang: %s...", server["name"], server_lang, lang)
             source = anikai.resolve_source(server["link_id"])
             if source and source.get("iframe_url"):
                 log.info("Anikai: Successfully selected server: %s", server["name"])
-                return {"server_name": server["name"], **source}
+                return {
+                    "server_name": server["name"], 
+                    "lang": server_lang,
+                    **source
+                }
         except Exception as e:
             log.warning("Anikai: Server %s failed: %s", server["name"], e)
             last_err = str(e)

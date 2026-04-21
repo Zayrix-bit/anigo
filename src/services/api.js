@@ -524,8 +524,8 @@ export async function checkDubAvailability(anilistId) {
     return data;
   } catch (err) {
     console.error("Dub check failed:", err.message);
-    // Graceful fallback: assume sub exists and allow dub toggle
-    return { hasSub: true, hasDub: true, subCount: 0, dubCount: 0 };
+    // Strict Validation: On error, do NOT assume DUB exists.
+    return { hasSub: true, hasDub: false, subCount: 0, dubCount: 0 };
   }
 }
 
