@@ -913,6 +913,7 @@ export default function Watch() {
           // Re-check cache inside try just in case, though we checked above
           if (streamCache.current.has(cacheKey)) {
             const cachedData = streamCache.current.get(cacheKey);
+            setStreamData(cachedData);
             url = cachedData.iframe_url || (cachedData.sources?.[0]?.url);
           } else {
             // 2. Parallel Fetch: Request both SUB and DUB to populate cache and speed up toggle
@@ -1148,11 +1149,13 @@ export default function Watch() {
                 </div>
               )}
 
-              {/* Player - Prefer Native Player if sources available, fallback to Iframe */}
+              {/* Player - Use Native Player ONLY for direct sources (no iframe_url).
+                  If iframe_url exists, always use iframe since the embed handles its own DRM/decryption. */}
               {streamUrl && (
-                streamData?.sources && Array.isArray(streamData.sources) && streamData.sources.length > 0 ? (
+                streamData?.sources && Array.isArray(streamData.sources) && streamData.sources.length > 0 && !streamData?.iframe_url ? (
                   <VideoPlayer
                     src={streamData.sources[0].url}
+                    type={streamData.sources[0].type}
                     poster={anime?.coverImage?.extraLarge || anime?.coverImage?.large}
                     subtitles={streamData.subtitles || []}
                   />

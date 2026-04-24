@@ -274,10 +274,31 @@ export async function getAniwatchDetails(keyword) {
 export async function getAnikaiDetails(slug) {
   if (!slug) return null;
   try {
-    const { data } = await axios.get(`${PYTHON_API}/api/anikai/info/${slug}`);
+    // If slug looks like a search title (no hyphens/special chars typical of slugs),
+    // search first to get the correct slug
+    const isLikelyTitle = !slug.includes('-') || slug.includes(' ');
+    if (isLikelyTitle) {
+      const { data: searchData } = await axios.get(`${PYTHON_API}/api/anikai/search`, {
+        params: { keyword: slug }
+      });
+      const results = searchData?.results || [];
+      if (results.length > 0) {
+        // Use the first result's slug
+        const { data } = await axios.get(`${PYTHON_API}/api/anikai/info/${encodeURIComponent(results[0].slug)}`);
+        return data;
+      }
+      return null;
+    }
+
+    // Direct slug lookup
+    const { data } = await axios.get(`${PYTHON_API}/api/anikai/info/${encodeURIComponent(slug)}`);
     return data;
   } catch (err) {
-    console.error("Anikai details failed:", err);
+    if (err.response?.status === 404) {
+      console.warn(`[Anikai] Details not found for: ${slug}`);
+    } else {
+      console.error("Anikai details failed:", err.message);
+    }
     return null;
   }
 }

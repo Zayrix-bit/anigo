@@ -3,7 +3,7 @@ import Hls from 'hls.js';
 import Plyr from 'plyr';
 import 'plyr/dist/plyr.css';
 
-const VideoPlayer = ({ src, poster, subtitles = [] }) => {
+const VideoPlayer = ({ src, type, poster, subtitles = [] }) => {
   const videoRef = useRef(null);
   const playerRef = useRef(null);
   const hlsRef = useRef(null);
@@ -32,7 +32,9 @@ const VideoPlayer = ({ src, poster, subtitles = [] }) => {
       playerRef.current = new Plyr(video, defaultOptions);
     };
 
-    if (src.endsWith('.m3u8')) {
+    const isHls = type === 'hls' || src.includes('.m3u8') || src.includes('index.m3u8');
+
+    if (isHls) {
       if (Hls.isSupported()) {
         if (hlsRef.current) {
           hlsRef.current.destroy();
