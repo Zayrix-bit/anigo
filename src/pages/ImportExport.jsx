@@ -316,10 +316,10 @@ export default function ImportExport() {
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col font-sans">
       <Navbar />
 
-      <div className="max-w-[1200px] mx-auto w-full pt-[80px] px-4 pb-12 flex-1">
+      <div className="max-w-[1000px] mx-auto w-full pt-[80px] px-4 pb-12 flex-1">
 
         {/* Top Navigation Tabs */}
-        <div className="flex overflow-x-auto no-scrollbar bg-[#1a1a1a] mb-8 border border-white/5 rounded-sm shadow-xl">
+        <div className="flex bg-[#1a1a1a] mb-6 md:mb-8 border border-white/5 rounded-sm shadow-xl overflow-hidden">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
@@ -327,11 +327,13 @@ export default function ImportExport() {
               <Link
                 key={item.id}
                 to={item.path}
-                className={`flex flex-col gap-2 min-w-[140px] flex-1 p-4 transition-colors relative group ${isActive ? "bg-[#222]" : "hover:bg-[#222]"}`}
+                className={`flex flex-col items-center justify-center md:items-start flex-1 aspect-square md:aspect-auto md:min-w-[140px] md:p-4 transition-colors relative group border-r border-white/5 last:border-r-0 ${isActive ? "bg-[#2a2a2a] md:bg-[#222]" : "bg-transparent hover:bg-[#222]"}`}
               >
-                {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-600" />}
-                <Icon size={16} className={isActive ? "text-red-500" : "text-white/40 group-hover:text-white/80"} />
-                <span className={`text-xs font-bold ${isActive ? "text-white" : "text-white/60 group-hover:text-white"}`}>{item.label}</span>
+                {isActive && <div className="hidden md:block absolute left-0 top-0 bottom-0 w-1 bg-red-600" />}
+                <div className="flex items-center justify-center w-full md:w-auto md:mb-2">
+                  <Icon size={20} className={`md:w-4 md:h-4 ${isActive ? "text-red-600" : "text-[#888] group-hover:text-white/80"}`} />
+                </div>
+                <span className={`hidden md:block text-xs font-bold ${isActive ? "text-white" : "text-white/60 group-hover:text-white"}`}>{item.label}</span>
               </Link>
             );
           })}
@@ -342,10 +344,10 @@ export default function ImportExport() {
           <div className="bg-[#1a1a1a] border border-white/5 rounded-md overflow-hidden shadow-2xl">
 
             {/* Import / Export Tabs */}
-            <div className="flex items-center gap-0 p-5 pb-0">
+            <div className="flex items-center gap-0 p-4 md:p-5 pb-0">
               <button
                 onClick={() => { setActiveTab("import"); setImportResult(null); }}
-                className={`flex items-center gap-2 px-5 py-2.5 text-sm font-bold transition-all rounded-[3px] ${
+                className={`flex items-center gap-2 px-4 md:px-5 py-2.5 text-xs md:text-sm font-bold transition-all rounded-[3px] ${
                   activeTab === "import" ? "bg-red-600 text-white" : "text-white/50 hover:text-white"
                 }`}
               >
@@ -354,7 +356,7 @@ export default function ImportExport() {
               </button>
               <button
                 onClick={() => { setActiveTab("export"); setImportResult(null); }}
-                className={`flex items-center gap-2 px-5 py-2.5 text-sm font-bold transition-all rounded-[3px] ${
+                className={`flex items-center gap-2 px-4 md:px-5 py-2.5 text-xs md:text-sm font-bold transition-all rounded-[3px] ${
                   activeTab === "export" ? "bg-red-600 text-white" : "text-white/50 hover:text-white"
                 }`}
               >
@@ -365,16 +367,16 @@ export default function ImportExport() {
 
             {/* ═══ IMPORT TAB ═══ */}
             {activeTab === "import" && (
-              <form onSubmit={handleImport} className="p-6 pt-5 space-y-6">
-                <div className="space-y-1 text-[13px] text-white/40 leading-relaxed">
+              <form onSubmit={handleImport} className="p-4 md:p-6 pt-5 space-y-6">
+                <div className="space-y-1 text-[12px] md:text-[13px] text-white/40 leading-relaxed">
                   <p>- Your MAL / AL list must be in public status.</p>
                   <p>- Anime present in your list but not available in our library will not be imported.</p>
                   <p>- This process may take some time, so please be patient.</p>
                 </div>
 
                 {/* From */}
-                <div className="flex items-center gap-8">
-                  <span className="text-sm font-bold text-white/70 w-[120px] shrink-0">From</span>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-8">
+                  <span className="text-[13px] md:text-sm font-bold text-white/70 w-auto sm:w-[120px] shrink-0">From</span>
                   <div className="flex items-center gap-6">
                     <Radio checked={importFrom === "MAL"} onChange={() => setImportFrom("MAL")} label="MAL" />
                     <Radio checked={importFrom === "AL"} onChange={() => setImportFrom("AL")} label="AL" />
@@ -384,28 +386,28 @@ export default function ImportExport() {
 
                 {/* Username (for AL only) */}
                 {importFrom === "AL" && (
-                  <div className="flex items-center gap-8">
-                    <span className="text-sm font-bold text-white/70 w-[120px] shrink-0">Username</span>
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-8">
+                    <span className="text-[13px] md:text-sm font-bold text-white/70 w-auto sm:w-[120px] shrink-0">Username</span>
                     <input
                       type="text"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       placeholder="AniList username"
-                      className="flex-1 bg-[#111] border border-white/10 rounded-sm px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-red-600/50 transition-colors"
+                      className="w-full flex-1 bg-[#111] border border-white/10 rounded-sm px-4 py-3 text-[13px] md:text-sm text-white placeholder-white/20 outline-none focus:border-red-600/50 transition-colors"
                     />
                   </div>
                 )}
 
                 {/* File Upload (for MAL and File) */}
                 {importFrom !== "AL" && (
-                  <div className="flex items-center gap-8">
-                    <span className="text-sm font-bold text-white/70 w-[120px] shrink-0">File</span>
-                    <div className="flex-1">
-                      <label className="flex items-center gap-0 cursor-pointer">
-                        <span className="bg-[#333] text-white/70 text-sm font-medium px-4 py-2.5 border border-white/10 rounded-l-sm hover:bg-[#444] transition-colors">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-8">
+                    <span className="text-[13px] md:text-sm font-bold text-white/70 w-auto sm:w-[120px] shrink-0">File</span>
+                    <div className="w-full flex-1">
+                      <label className="flex items-center gap-0 cursor-pointer w-full">
+                        <span className="bg-[#333] text-white/70 text-[12px] md:text-sm font-medium px-3 md:px-4 py-2.5 md:py-3 border border-white/10 rounded-l-sm hover:bg-[#444] transition-colors whitespace-nowrap">
                           Choose File
                         </span>
-                        <span className="flex-1 bg-[#111] text-white/30 text-sm px-4 py-2.5 border border-l-0 border-white/10 rounded-r-sm truncate">
+                        <span className="flex-1 bg-[#111] text-white/30 text-[12px] md:text-sm px-3 md:px-4 py-2.5 md:py-3 border border-l-0 border-white/10 rounded-r-sm truncate">
                           {importFile ? importFile.name : "No file chosen"}
                         </span>
                         <input
@@ -415,7 +417,7 @@ export default function ImportExport() {
                           className="hidden"
                         />
                       </label>
-                      <p className="text-xs text-white/30 mt-2">
+                      <p className="text-[11px] md:text-xs text-white/30 mt-2">
                         {importFrom === "MAL"
                           ? "Choose the XML file you downloaded from MAL."
                           : "Choose a previously exported JSON file."}
@@ -425,8 +427,8 @@ export default function ImportExport() {
                 )}
 
                 {/* Mode */}
-                <div className="flex items-center gap-8">
-                  <span className="text-sm font-bold text-white/70 w-[120px] shrink-0">Mode</span>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-8">
+                  <span className="text-[13px] md:text-sm font-bold text-white/70 w-auto sm:w-[120px] shrink-0">Mode</span>
                   <div className="flex items-center gap-6">
                     <Radio checked={importMode === "Merge"} onChange={() => setImportMode("Merge")} label="Merge" />
                     <Radio checked={importMode === "Replace"} onChange={() => setImportMode("Replace")} label="Replace" />
@@ -435,7 +437,7 @@ export default function ImportExport() {
 
                 {/* Progress indicator */}
                 {importProgress && (
-                  <div className="flex items-center gap-3 p-3 bg-blue-600/10 border border-blue-600/20 rounded text-sm text-blue-400">
+                  <div className="flex items-center gap-3 p-3 bg-blue-600/10 border border-blue-600/20 rounded text-[12px] md:text-sm text-blue-400">
                     <Loader2 size={16} className="animate-spin shrink-0" />
                     {importProgress}
                   </div>
@@ -443,12 +445,12 @@ export default function ImportExport() {
 
                 {/* Result Message */}
                 {importResult && (
-                  <div className={`p-4 rounded text-sm font-medium flex items-start gap-3 ${
+                  <div className={`p-3 md:p-4 rounded text-[12px] md:text-sm font-medium flex items-start gap-3 ${
                     importResult.success 
                       ? 'bg-green-600/10 text-green-400 border border-green-600/20' 
                       : 'bg-red-600/10 text-red-400 border border-red-600/20'
                   }`}>
-                    {importResult.success ? <CheckCircle2 size={18} className="shrink-0 mt-0.5" /> : <AlertTriangle size={18} className="shrink-0 mt-0.5" />}
+                    {importResult.success ? <CheckCircle2 size={16} className="shrink-0 mt-0.5" /> : <AlertTriangle size={16} className="shrink-0 mt-0.5" />}
                     <span>{importResult.message}</span>
                   </div>
                 )}
@@ -457,7 +459,7 @@ export default function ImportExport() {
                 <button
                   type="submit"
                   disabled={isImporting}
-                  className="w-full bg-red-600 hover:bg-red-700 disabled:bg-red-900/50 text-white font-bold py-4 text-sm uppercase tracking-[0.15em] transition-all flex items-center justify-center gap-2 rounded-sm"
+                  className="w-full bg-red-600 hover:bg-red-700 disabled:bg-red-900/50 text-white font-bold py-3.5 md:py-4 text-[13px] md:text-sm uppercase tracking-[0.15em] transition-all flex items-center justify-center gap-2 rounded-sm"
                 >
                   {isImporting ? (
                     <Loader2 size={16} className="animate-spin" />
@@ -473,13 +475,13 @@ export default function ImportExport() {
 
             {/* ═══ EXPORT TAB ═══ */}
             {activeTab === "export" && (
-              <div className="p-6 pt-5 space-y-6">
-                <p className="text-[13px] text-white/40 leading-relaxed">
+              <div className="p-4 md:p-6 pt-5 space-y-6">
+                <p className="text-[12px] md:text-[13px] text-white/40 leading-relaxed">
                   - Export your list to a file, allowing you to use it wherever you like.
                 </p>
 
-                <div className="flex items-center gap-8">
-                  <span className="text-sm font-bold text-white/70 w-[120px] shrink-0">Format</span>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-8">
+                  <span className="text-[13px] md:text-sm font-bold text-white/70 w-auto sm:w-[120px] shrink-0">Format</span>
                   <div className="flex items-center gap-6">
                     <Radio checked={exportFormat === "TEXT"} onChange={() => setExportFormat("TEXT")} label="TEXT" />
                     <Radio checked={exportFormat === "JSON"} onChange={() => setExportFormat("JSON")} label="JSON" />

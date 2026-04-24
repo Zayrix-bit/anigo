@@ -57,10 +57,10 @@ export default function Settings() {
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col font-sans" key={settingsKey}>
       <Navbar />
 
-      <div className="max-w-[1200px] mx-auto w-full pt-[80px] px-4 pb-12 flex-1">
+      <div className="max-w-[1000px] mx-auto w-full pt-[80px] px-4 pb-12 flex-1">
         
         {/* Top Navigation Tabs */}
-        <div className="flex overflow-x-auto no-scrollbar bg-[#1a1a1a] mb-8 border border-white/5 rounded-sm shadow-xl">
+        <div className="flex bg-[#1a1a1a] mb-6 md:mb-8 border border-white/5 rounded-sm shadow-xl overflow-hidden">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
@@ -69,15 +69,17 @@ export default function Settings() {
               <Link
                 key={item.id}
                 to={item.path}
-                className={`flex flex-col gap-2 min-w-[140px] flex-1 p-4 transition-colors relative group ${
-                  isActive ? "bg-[#222]" : "hover:bg-[#222]"
+                className={`flex flex-col items-center justify-center md:items-start flex-1 aspect-square md:aspect-auto md:min-w-[140px] md:p-4 transition-colors relative group border-r border-white/5 last:border-r-0 ${
+                  isActive ? "bg-[#2a2a2a] md:bg-[#222]" : "bg-transparent hover:bg-[#222]"
                 }`}
               >
                 {isActive && (
-                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-600" />
+                  <div className="hidden md:block absolute left-0 top-0 bottom-0 w-1 bg-red-600" />
                 )}
-                <Icon size={16} className={isActive ? "text-red-500" : "text-white/40 group-hover:text-white/80"} />
-                <span className={`text-xs font-bold ${isActive ? "text-white" : "text-white/60 group-hover:text-white"}`}>
+                <div className="flex items-center justify-center w-full md:w-auto md:mb-2">
+                  <Icon size={20} className={`md:w-4 md:h-4 ${isActive ? "text-red-600" : "text-[#888] group-hover:text-white/80"}`} />
+                </div>
+                <span className={`hidden md:block text-xs font-bold ${isActive ? "text-white" : "text-white/60 group-hover:text-white"}`}>
                   {item.label}
                 </span>
               </Link>

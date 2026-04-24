@@ -46,10 +46,10 @@ export default function ContinueWatching() {
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col font-sans">
       <Navbar />
 
-      <div className="max-w-[1200px] mx-auto w-full pt-[80px] px-4 pb-12 flex-1">
+      <div className="max-w-[1000px] mx-auto w-full pt-[80px] px-4 pb-12 flex-1">
 
         {/* Top Navigation Tabs */}
-        <div className="flex overflow-x-auto no-scrollbar bg-[#1a1a1a] mb-8 border border-white/5 rounded-sm shadow-xl">
+        <div className="flex bg-[#1a1a1a] mb-6 md:mb-8 border border-white/5 rounded-sm shadow-xl overflow-hidden">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
@@ -58,15 +58,17 @@ export default function ContinueWatching() {
               <Link
                 key={item.id}
                 to={item.path}
-                className={`flex flex-col gap-2 min-w-[140px] flex-1 p-4 transition-colors relative group ${
-                  isActive ? "bg-[#222]" : "hover:bg-[#222]"
+                className={`flex flex-col items-center justify-center md:items-start flex-1 aspect-square md:aspect-auto md:min-w-[140px] md:p-4 transition-colors relative group border-r border-white/5 last:border-r-0 ${
+                  isActive ? "bg-[#2a2a2a] md:bg-[#222]" : "bg-transparent hover:bg-[#222]"
                 }`}
               >
                 {isActive && (
-                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-600" />
+                  <div className="hidden md:block absolute left-0 top-0 bottom-0 w-1 bg-red-600" />
                 )}
-                <Icon size={16} className={isActive ? "text-red-500" : "text-white/40 group-hover:text-white/80"} />
-                <span className={`text-xs font-bold ${isActive ? "text-white" : "text-white/60 group-hover:text-white"}`}>
+                <div className="flex items-center justify-center w-full md:w-auto md:mb-2">
+                  <Icon size={20} className={`md:w-4 md:h-4 ${isActive ? "text-red-600" : "text-[#888] group-hover:text-white/80"}`} />
+                </div>
+                <span className={`hidden md:block text-xs font-bold ${isActive ? "text-white" : "text-white/60 group-hover:text-white"}`}>
                   {item.label}
                 </span>
               </Link>
@@ -103,10 +105,26 @@ export default function ContinueWatching() {
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-20 text-center opacity-20">
-            <Clock size={60} strokeWidth={1} />
-            <p className="text-sm font-bold mt-6 uppercase tracking-[0.2em]">Nothing here yet</p>
-            <p className="text-xs mt-2 text-white/40 max-w-[300px]">Start watching anime and your progress will appear here for easy resuming.</p>
+          <div className="flex flex-col items-center justify-center py-32 bg-[#141414] border border-white/5 rounded-md shadow-2xl relative overflow-hidden">
+            {/* Background Glow */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-red-600/5 rounded-full blur-[80px]"></div>
+            
+            {/* Icon Container */}
+            <div className="relative w-20 h-20 mb-6 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+              <Clock size={32} className="text-white/40" strokeWidth={1.5} />
+            </div>
+            
+            <h2 className="text-2xl font-bold text-white mb-2 uppercase tracking-wide">Nothing Here Yet</h2>
+            <p className="text-white/40 mb-8 text-[15px] max-w-sm text-center leading-relaxed">
+              Start watching an anime and your progress will appear here, making it easy to pick up right where you left off.
+            </p>
+            
+            <Link 
+              to="/browse" 
+              className="bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold py-3.5 px-8 rounded text-sm uppercase tracking-widest transition-colors"
+            >
+              Start Watching
+            </Link>
           </div>
         )}
 

@@ -65,10 +65,10 @@ export default function Watchlist() {
     <div className="min-h-screen bg-[#111] text-white flex flex-col font-sans">
       <Navbar />
 
-      <div className="max-w-[1200px] mx-auto w-full pt-[80px] px-4 pb-12 flex-1">
+      <div className="max-w-[1000px] mx-auto w-full pt-[80px] px-4 pb-12 flex-1">
         
         {/* Top Navigation Tabs */}
-        <div className="flex overflow-x-auto no-scrollbar bg-[#1a1a1a] mb-6 border border-white/5 rounded-sm">
+        <div className="flex bg-[#1a1a1a] mb-6 md:mb-8 border border-white/5 rounded-sm shadow-xl overflow-hidden">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path || (item.id === "bookmarks" && location.pathname === "/watchlist");
             const Icon = item.icon;
@@ -77,15 +77,17 @@ export default function Watchlist() {
               <Link
                 key={item.id}
                 to={item.path}
-                className={`flex flex-col gap-2 min-w-[140px] flex-1 p-4 transition-colors relative group ${
-                  isActive ? "bg-[#222]" : "hover:bg-[#222]"
+                className={`flex flex-col items-center justify-center md:items-start flex-1 aspect-square md:aspect-auto md:min-w-[140px] md:p-4 transition-colors relative group border-r border-white/5 last:border-r-0 ${
+                  isActive ? "bg-[#2a2a2a] md:bg-[#222]" : "bg-transparent hover:bg-[#222]"
                 }`}
               >
                 {isActive && (
-                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-600" />
+                  <div className="hidden md:block absolute left-0 top-0 bottom-0 w-1 bg-red-600" />
                 )}
-                <Icon size={16} className={isActive ? "text-red-500" : "text-white/40 group-hover:text-white/80"} fill={item.id === "bookmarks" && isActive ? "currentColor" : "none"} />
-                <span className={`text-xs font-bold ${isActive ? "text-white" : "text-white/60 group-hover:text-white"}`}>
+                <div className="flex items-center justify-center w-full md:w-auto md:mb-2">
+                  <Icon size={20} className={`md:w-4 md:h-4 ${isActive ? "text-red-600" : "text-[#888] group-hover:text-white/80"}`} fill={item.id === "bookmarks" && isActive ? "currentColor" : "none"} />
+                </div>
+                <span className={`hidden md:block text-xs font-bold ${isActive ? "text-white" : "text-white/60 group-hover:text-white"}`}>
                   {item.label}
                 </span>
               </Link>
@@ -106,62 +108,29 @@ export default function Watchlist() {
               {tab}
             </button>
           ))}
-          <button className="text-sm font-medium text-white/40 hover:text-white flex items-center gap-1 px-4 py-2">
-            More <ChevronDown size={14} />
-          </button>
         </div>
 
-        {/* Filter Bar */}
-        <div className="flex flex-col md:flex-row gap-2 mb-8 bg-[#111] border-y md:border md:rounded-sm border-white/5 p-2">
-          
-          <div className="flex-1 relative bg-[#1a1a1a] rounded-sm flex items-center px-4 py-2 md:py-0 border border-white/5">
-            <input 
-              type="text" 
-              placeholder="Search.." 
-              className="bg-transparent border-none outline-none text-sm text-white w-full placeholder:text-white/30"
-            />
-            <Search size={14} className="text-white/30" />
-          </div>
 
-          <div className="flex-1 bg-[#1a1a1a] rounded-sm flex items-center justify-between px-4 py-2 border border-white/5">
-            <span className="text-sm text-white/30">Type</span>
-            <ChevronDown size={14} className="text-white/30" />
-          </div>
-
-          <div className="flex-1 bg-[#1a1a1a] rounded-sm flex items-center justify-between px-4 py-2 border border-white/5">
-            <span className="text-sm text-white/30">Genre</span>
-            <ChevronDown size={14} className="text-white/30" />
-          </div>
-
-          <div className="flex-1 bg-[#1a1a1a] rounded-sm flex items-center justify-between px-4 py-2 border border-white/5">
-            <span className="text-sm text-white/30">Status</span>
-            <ChevronDown size={14} className="text-white/30" />
-          </div>
-
-          <div className="flex-1 bg-[#1a1a1a] rounded-sm flex items-center justify-between px-4 py-2 border border-white/5">
-            <span className="text-sm text-white/30">Default</span>
-            <ChevronDown size={14} className="text-white/30" />
-          </div>
-
-          <button className="bg-[#1a1a1a] p-3 rounded-sm border border-white/5 flex items-center justify-center hover:bg-[#222] transition-colors">
-            <ArrowDownUp size={14} className="text-white/50" />
-          </button>
-
-          <button className="bg-red-600 hover:bg-red-700 text-white font-bold text-sm px-8 py-2 rounded-sm transition-colors flex items-center justify-center gap-2">
-            <Filter size={14} fill="currentColor" />
-            Filter
-          </button>
-
-        </div>
 
         {watchlist.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 bg-white/[0.02] border border-white/5 rounded-lg">
-            <svg className="w-16 h-16 text-[#444] mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-            </svg>
-            <h2 className="text-xl font-bold text-[#888] mb-2">Your watchlist is empty</h2>
-            <p className="text-[#666] mb-6 text-sm">Explore anime and click the heart icon to save them here.</p>
-            <Link to="/" className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded transition-colors">
+          <div className="flex flex-col items-center justify-center py-32 bg-[#141414] border border-white/5 rounded-md shadow-2xl relative overflow-hidden">
+            {/* Background Glow */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-red-600/5 rounded-full blur-[80px]"></div>
+            
+            {/* Icon Container */}
+            <div className="relative w-20 h-20 mb-6 rounded-full bg-red-600/10 flex items-center justify-center border border-red-500/20">
+              <Heart size={32} className="text-red-500" strokeWidth={1.5} />
+            </div>
+            
+            <h2 className="text-2xl font-bold text-white mb-2 uppercase tracking-wide">Your Watchlist is Empty</h2>
+            <p className="text-white/40 mb-8 text-[15px] max-w-sm text-center leading-relaxed">
+              Looks like you haven't saved any anime yet. Discover new shows and add them to your collection!
+            </p>
+            
+            <Link 
+              to="/browse" 
+              className="bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 px-8 rounded text-sm uppercase tracking-widest transition-all hover:scale-105 shadow-[0_0_20px_rgba(220,38,38,0.3)] hover:shadow-[0_0_30px_rgba(220,38,38,0.5)]"
+            >
               Browse Anime
             </Link>
           </div>
