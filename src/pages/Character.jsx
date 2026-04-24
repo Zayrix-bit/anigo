@@ -47,8 +47,8 @@ export default function Character() {
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       <Navbar />
 
-      {/* Hero Section */}
-      <div className="relative h-[400px] sm:h-[500px] overflow-hidden">
+      {/* Hero Section — Mobile-first responsive */}
+      <div className="relative min-h-[320px] sm:min-h-[400px] md:min-h-[450px] overflow-hidden">
         {/* Blurred Background Image */}
         <div 
           className="absolute inset-0 bg-cover bg-center scale-110 blur-2xl opacity-20"
@@ -56,11 +56,11 @@ export default function Character() {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/60 to-transparent" />
 
-        <div className="relative max-w-[1400px] mx-auto px-4 md:px-8 h-full flex flex-col justify-end pb-12">
+        <div className="relative max-w-[1400px] mx-auto px-4 md:px-8 h-full flex flex-col justify-end pt-20 pb-8 sm:pb-12">
           {/* Back Button */}
           <button 
             onClick={() => navigate(-1)}
-            className="absolute top-24 left-4 md:left-8 flex items-center gap-2 text-white/40 hover:text-white transition-colors group mb-8"
+            className="flex items-center gap-2 text-white/40 hover:text-white transition-colors group mb-6"
           >
             <div className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center group-hover:border-white/30 group-hover:bg-white/5">
               <ChevronLeft size={18} />
@@ -68,39 +68,42 @@ export default function Character() {
             <span className="text-[11px] font-bold uppercase tracking-widest">Return</span>
           </button>
 
-          <div className="flex flex-col md:flex-row items-end gap-8">
+          {/* Mobile: Stacked center layout | Desktop: Side-by-side */}
+          <div className="flex flex-col items-center text-center sm:flex-row sm:items-end sm:text-left gap-5 sm:gap-8">
             {/* Character Image */}
-            <div className="w-[180px] sm:w-[240px] shrink-0 rounded-[4px] overflow-hidden border border-white/10 shadow-2xl relative group">
+            <div className="w-[140px] sm:w-[180px] md:w-[220px] shrink-0 rounded-lg overflow-hidden border border-white/10 shadow-2xl relative">
               <img 
                 src={char.image?.large} 
                 alt={char.name?.full} 
-                className="w-full h-full object-cover"
+                className="w-full aspect-[2/3] object-cover"
               />
-              <div className="absolute top-3 right-3 bg-red-600 text-white p-2 rounded-full shadow-lg">
-                <Heart size={16} fill="white" />
+              <div className="absolute top-2 right-2 bg-red-600 text-white p-1.5 rounded-full shadow-lg">
+                <Heart size={14} fill="white" />
               </div>
             </div>
 
             {/* Name and Basic Info */}
-            <div className="flex-1">
-              <div className="flex flex-wrap items-center gap-3 mb-4">
-                <span className="px-2 py-1 bg-white/10 text-white/50 text-[10px] font-black uppercase rounded-[2px] tracking-widest">
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-3">
+                <span className="px-2 py-0.5 bg-white/10 text-white/50 text-[9px] font-bold uppercase rounded tracking-widest">
                   Character Profile
                 </span>
                 {char.gender && (
-                  <span className="px-2 py-1 bg-blue-600/20 text-blue-400 text-[10px] font-black uppercase rounded-[2px] tracking-widest">
+                  <span className="px-2 py-0.5 bg-blue-600/20 text-blue-400 text-[9px] font-bold uppercase rounded tracking-widest">
                     {char.gender}
                   </span>
                 )}
               </div>
-              <h1 className="text-4xl sm:text-6xl font-black text-white leading-none tracking-tighter uppercase mb-2">
+              <h1 className="text-2xl sm:text-4xl md:text-5xl font-black text-white leading-none tracking-tighter uppercase mb-1">
                 {char.name?.full}
               </h1>
-              <p className="text-xl font-bold text-red-600/80 mb-6 italic">
-                {char.name?.native}
-              </p>
+              {char.name?.native && (
+                <p className="text-sm sm:text-lg font-bold text-red-600/70 mb-4 italic">
+                  {char.name?.native}
+                </p>
+              )}
               
-              <div className="flex flex-wrap gap-6 text-[12px] font-bold uppercase tracking-wider text-white/40">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-5 gap-y-1 text-[11px] sm:text-[12px] font-bold uppercase tracking-wider text-white/40">
                 {char.age && <div>Age: <span className="text-white">{char.age}</span></div>}
                 {char.bloodType && <div>Blood Type: <span className="text-white">{char.bloodType}</span></div>}
                 <div>Favourites: <span className="text-white">{char.favourites?.toLocaleString()}</span></div>
@@ -111,55 +114,99 @@ export default function Character() {
       </div>
 
       {/* Content Section */}
-      <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+      <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-8 sm:py-12">
+        
+        {/* Voice Actors — Mobile: horizontal scroll FIRST, before bio */}
+        <div className="lg:hidden mb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-[3px] h-5 bg-red-600 rounded-full" />
+            <h2 className="text-sm font-black text-white uppercase tracking-tight">Voice Actors</h2>
+          </div>
+          <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4 snap-x">
+            {(() => {
+              const vas = [];
+              const seen = new Set();
+              char.media?.edges?.forEach(edge => {
+                edge.voiceActors?.forEach(va => {
+                  if (!seen.has(va.id)) {
+                    seen.add(va.id);
+                    vas.push(va);
+                  }
+                });
+              });
+              return vas.length > 0 ? vas.map((va) => (
+                <Link 
+                  key={va.id} 
+                  to={`/staff/${va.id}`}
+                  className="flex-shrink-0 w-[100px] snap-start text-center group"
+                >
+                  <img 
+                    src={va.image?.large} 
+                    alt={va.name?.full} 
+                    className="w-20 h-20 mx-auto object-cover rounded-full border-2 border-white/10 group-hover:border-red-500 transition-colors shadow-lg"
+                    loading="lazy"
+                  />
+                  <p className="text-[11px] font-semibold text-white/70 mt-2 truncate">{va.name?.full}</p>
+                  <p className="text-[9px] text-white/25 uppercase tracking-wider">Japanese</p>
+                </Link>
+              )) : (
+                <div className="w-full p-6 text-center bg-white/5 rounded border border-dashed border-white/10">
+                  <p className="text-white/20 text-[11px] font-bold uppercase tracking-widest">No Voice Actor Found</p>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
           
           {/* Main Info Column */}
-          <div className="lg:col-span-2 space-y-12">
+          <div className="lg:col-span-2 space-y-10">
             {/* Biography */}
             <section>
-              <div className="flex items-center gap-3 mb-6">
+              <div className="flex items-center gap-3 mb-4 sm:mb-6">
                 <div className="w-[3px] h-5 bg-red-600 rounded-full" />
-                <h2 className="text-xl font-black text-white uppercase tracking-tight">Biography</h2>
+                <h2 className="text-base sm:text-xl font-black text-white uppercase tracking-tight">Biography</h2>
               </div>
               <div 
-                className="prose prose-invert max-w-none text-white/60 leading-relaxed text-[15px]"
+                className="prose prose-invert max-w-none text-white/60 leading-relaxed text-[13px] sm:text-[15px]"
                 dangerouslySetInnerHTML={{ __html: char.description || "No biography available for this character." }}
               />
             </section>
 
             {/* Anime Appearances */}
             <section>
-              <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center justify-between mb-6 sm:mb-8">
                 <div className="flex items-center gap-3">
                   <div className="w-[3px] h-5 bg-red-600 rounded-full" />
-                  <h2 className="text-xl font-black text-white uppercase tracking-tight">Appearances</h2>
+                  <h2 className="text-base sm:text-xl font-black text-white uppercase tracking-tight">Appearances</h2>
                 </div>
-                <span className="text-[11px] font-bold text-white/20 uppercase tracking-widest">{animeAppearances.length} TITLES</span>
+                <span className="text-[10px] sm:text-[11px] font-bold text-white/20 uppercase tracking-widest">{animeAppearances.length} TITLES</span>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 lg:gap-6">
+              <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-4 lg:gap-6">
                 {animeAppearances.map((edge) => (
                   <Link 
                     key={edge.node.id}
                     to={`/watch/${edge.node.id}`}
                     className="group"
                   >
-                    <div className="relative aspect-[2/3] rounded-[4px] overflow-hidden border border-white/5 mb-2">
+                    <div className="relative aspect-[2/3] rounded overflow-hidden border border-white/5 mb-1.5 sm:mb-2">
                       <img 
                         src={edge.node.coverImage?.large} 
                         alt={edge.node.title?.romaji}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                        loading="lazy"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
-                        <span className="text-[10px] font-black text-red-600 uppercase tracking-widest mb-1">{edge.characterRole}</span>
-                        <div className="flex items-center gap-2 text-white/80 text-[10px] font-bold">
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2 sm:p-3">
+                        <span className="text-[8px] sm:text-[10px] font-black text-red-600 uppercase tracking-widest mb-1">{edge.characterRole}</span>
+                        <div className="flex items-center gap-2 text-white/80 text-[9px] sm:text-[10px] font-bold">
                           <span className="flex items-center gap-1"><Tv size={10} /> {edge.node.format}</span>
                           {edge.node.averageScore && <span className="flex items-center gap-1"><Star size={10} fill="currentColor" className="text-yellow-500" /> {edge.node.averageScore}%</span>}
                         </div>
                       </div>
                     </div>
-                    <p className="text-[13px] font-bold text-white/70 group-hover:text-white transition-colors line-clamp-2 leading-tight">
+                    <p className="text-[11px] sm:text-[13px] font-bold text-white/70 group-hover:text-white transition-colors line-clamp-2 leading-tight">
                       {getTitle(edge.node.title)}
                     </p>
                   </Link>
@@ -168,8 +215,8 @@ export default function Character() {
             </section>
           </div>
 
-          {/* Sidebar Column */}
-          <div className="space-y-12">
+          {/* Sidebar Column — Desktop only (mobile version shown above) */}
+          <div className="hidden lg:block space-y-12">
             {/* Voice Actors Section */}
             <section>
               <div className="flex items-center gap-3 mb-8">
