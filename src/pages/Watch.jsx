@@ -824,15 +824,36 @@ export default function Watch() {
       }
 
       // 3. Track Progress for Continue Watching
-      const currentTime = data.currentTime || data.time || data.seconds || data.progress?.seconds;
-      const duration = data.duration || data.totalTime || data.progress?.duration;
+      // Robustly extract time and duration from various player message structures
+      const getNum = (...vals) => {
+        for (const val of vals) {
+          const num = Number(val);
+          if (!isNaN(num) && typeof num === 'number' && num > 0) return num;
+        }
+        return null;
+      };
+
+      const currentTime = getNum(
+        data.currentTime, data.time, data.seconds, data.position,
+        data.progress?.seconds, data.progress?.position,
+        data.data?.currentTime, data.data?.position, data.data?.seconds,
+        data.value?.currentTime, data.value?.position
+      );
+
+      const duration = getNum(
+        data.duration, data.totalTime,
+        data.progress?.duration,
+        data.data?.duration,
+        data.value?.duration
+      );
       
-      if (user && typeof currentTime === 'number' && currentTime > 10) { // Don't track if < 10s
+      if (user && currentTime && currentTime > 10) { // Don't track if < 10s
         const now = Date.now();
         // Sync every 10 seconds to avoid spamming the DB
         if (now - lastProgressSync.current > 10000) {
           lastProgressSync.current = now;
           const coverImg = anime?.coverImage?.large || anime?.coverImage?.extraLarge;
+          
           updateProgress(String(id), activeEpisode, Math.floor(currentTime), duration ? Math.floor(duration) : null, getTitle(anime?.title), coverImg)
             .then(res => {
               if (res.success && res.progress) {
