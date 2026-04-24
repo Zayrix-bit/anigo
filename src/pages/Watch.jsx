@@ -860,20 +860,21 @@ export default function Watch() {
 
       // --- OPTIMIZATION: Check Cache First BEFORE resetting state ---
       if (activeServer === 1) {
-        const ep = anikaiEpisodes.find(e => String(e.number) === String(activeEpisode));
+        if (!anikaiEpisodes || anikaiEpisodes.length === 0) return;
+        const ep = anikaiEpisodes.find(e => String(e?.number) === String(activeEpisode));
         if (ep) {
           const cacheKey = `${ep.id}-${playerLang}`;
           if (streamCache.current.has(cacheKey)) {
             const cachedData = streamCache.current.get(cacheKey);
             const url = cachedData.iframe_url || (cachedData.sources?.[0]?.url);
             // Verify cache matches requested language
-              if (url && cachedData.lang === playerLang) {
-                const finalUrl = `${url}#lang=${playerLang}`;
-                setStreamData(cachedData);
-                setStreamUrl(finalUrl);
-                setStreamLoading(false);
-                setFetchError(null);
-                console.info(`[Player] ⚡ Instant Cache Hit for Ep ${activeEpisode}`);
+            if (url && cachedData.lang === playerLang) {
+              const finalUrl = `${url}#lang=${playerLang}`;
+              setStreamData(cachedData);
+              setStreamUrl(finalUrl);
+              setStreamLoading(false);
+              setFetchError(null);
+              console.info(`[Player] ⚡ Instant Cache Hit for Ep ${activeEpisode}`);
               // Trigger prefetch for next one anyway
               if (activeEpisode < episodesList.length) prefetchNextEpisode(activeEpisode + 1);
               return;
@@ -893,9 +894,14 @@ export default function Watch() {
 
         // --- SERVER 1: ANIKAI INTEGRATION (Optimized with Caching & Parallel Fetching) ---
         if (activeServer === 1) {
-          const ep = anikaiEpisodes.find(e => String(e.number) === String(activeEpisode));
+          if (!anikaiEpisodes || anikaiEpisodes.length === 0) {
+            console.info("[Player] Anikai episodes not loaded yet, waiting...");
+            return;
+          }
+
+          const ep = anikaiEpisodes.find(e => String(e?.number) === String(activeEpisode));
           if (!ep) {
-            console.error(`[Player] Episode ${activeEpisode} not found in Anikai list.`);
+            console.error(`[Player] Episode ${activeEpisode} not found. Available:`, anikaiEpisodes.map(e => e.number));
             setFetchError(`Episode ${activeEpisode} not found on Anikai.`);
             setStreamLoading(false);
             return;
@@ -964,7 +970,8 @@ export default function Watch() {
           url = `https://megaplay.buzz/stream/ani/${id}/${activeEpisode}/${playerLang}`;
         }
 
-        // --- SERVER 4: MEGAPLAY ANIWATCH ---
+        /* 
+        // --- SERVER 4: MEGAPLAY ANIWATCH (Offline) ---
         else if (activeServer === 4) {
           const awEp = aniwatchEps.find(e => String(e.number) === String(activeEpisode));
           if (awEp) {
@@ -973,6 +980,7 @@ export default function Watch() {
             setFetchError("Aniwatch episode ID not found. Try Server 2 or 3.");
           }
         }
+        */
 
         if (url) {
           // Inject Autoplay and premium params
@@ -1119,7 +1127,7 @@ export default function Watch() {
                             <Frown size={48} className="text-white/20" />
                             <p className="text-white/60 text-sm font-bold uppercase tracking-widest">Playback Issue</p>
                             <p className="text-white/20 text-[10px] max-w-[250px]">{fetchError}</p>
-                            <button 
+                            <button
                               onClick={() => window.location.reload()}
                               className="mt-2 px-4 py-1.5 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-[10px] font-bold uppercase tracking-widest rounded-sm transition-all"
                             >
@@ -1143,9 +1151,9 @@ export default function Watch() {
               {/* Player - Prefer Native Player if sources available, fallback to Iframe */}
               {streamUrl && (
                 streamData?.sources && Array.isArray(streamData.sources) && streamData.sources.length > 0 ? (
-                  <VideoPlayer 
-                    src={streamData.sources[0].url} 
-                    poster={animeDetails?.coverImage?.extraLarge || animeDetails?.coverImage?.large}
+                  <VideoPlayer
+                    src={streamData.sources[0].url}
+                    poster={anime?.coverImage?.extraLarge || anime?.coverImage?.large}
                     subtitles={streamData.subtitles || []}
                   />
                 ) : (
@@ -1322,16 +1330,18 @@ export default function Watch() {
                   <div className="flex bg-[#161616] p-1 rounded-sm border border-white/5">
                     <button
                       onClick={() => setPlayerLang("sub")}
+                      disabled={!hasSub}
                       className={`flex items-center gap-2 px-5 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-sm transition-all ${playerLang === "sub" ? "bg-red-600 text-white shadow-lg" : "text-white/40 hover:text-white"
-                        }`}
+                        } ${!hasSub ? "opacity-20 pointer-events-none" : ""}`}
                     >
                       <MessageSquare size={12} fill="currentColor" className="opacity-50" />
                       Sub
                     </button>
                     <button
                       onClick={() => setPlayerLang("dub")}
+                      disabled={!hasDub}
                       className={`flex items-center gap-2 px-5 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-sm transition-all ${playerLang === "dub" ? "bg-red-600 text-white shadow-lg" : "text-white/40 hover:text-white"
-                        }`}
+                        } ${!hasDub ? "opacity-20 pointer-events-none" : ""}`}
                     >
                       <Mic size={12} fill="currentColor" className="opacity-50" />
                       Dub
@@ -1341,7 +1351,7 @@ export default function Watch() {
 
                   {/* Servers List */}
                   <div className="flex items-center gap-2 overflow-x-auto no-scrollbar max-w-[300px]">
-                    {[1, 2, 3, 4].map((num) => (
+                    {[1, 2, 3].map((num) => (
                       <button
                         key={num}
                         onClick={() => setActiveServer(num)}

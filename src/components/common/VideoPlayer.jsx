@@ -10,7 +10,7 @@ const VideoPlayer = ({ src, poster, subtitles = [] }) => {
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || !src || typeof src !== 'string') return;
 
     // Default Plyr options
     const defaultOptions = {
@@ -25,30 +25,62 @@ const VideoPlayer = ({ src, poster, subtitles = [] }) => {
       ],
     };
 
+    const initPlyr = () => {
+      if (playerRef.current) {
+        playerRef.current.destroy();
+      }
+      playerRef.current = new Plyr(video, defaultOptions);
+    };
+
     if (src.endsWith('.m3u8')) {
       if (Hls.isSupported()) {
+        if (hlsRef.current) {
+          hlsRef.current.destroy();
+        }
         const hls = new Hls();
         hls.loadSource(src);
         hls.attachMedia(video);
         hlsRef.current = hls;
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          playerRef.current = new Plyr(video, defaultOptions);
+          initPlyr();
+        });
+        
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                hls.startLoad();
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                hls.recoverMediaError();
+                break;
+              default:
+                hls.destroy();
+                break;
+            }
+          }
         });
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         // Fallback for Safari
         video.src = src;
-        playerRef.current = new Plyr(video, defaultOptions);
+        initPlyr();
       }
     } else {
       // Direct MP4
       video.src = src;
-      playerRef.current = new Plyr(video, defaultOptions);
+      initPlyr();
     }
 
     return () => {
-      if (playerRef.current) playerRef.current.destroy();
-      if (hlsRef.current) hlsRef.current.destroy();
+      if (playerRef.current && typeof playerRef.current.destroy === 'function') {
+        playerRef.current.destroy();
+        playerRef.current = null;
+      }
+      if (hlsRef.current && typeof hlsRef.current.destroy === 'function') {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
     };
   }, [src]);
 
@@ -61,16 +93,19 @@ const VideoPlayer = ({ src, poster, subtitles = [] }) => {
         poster={poster}
         className="w-full h-full"
       >
-        {subtitles.map((sub, index) => (
-          <track
-            key={index}
-            kind="captions"
-            label={sub.label || `Language ${index}`}
-            srcLang={sub.lang || 'en'}
-            src={sub.url}
-            default={sub.default}
-          />
-        ))}
+        {Array.isArray(subtitles) && subtitles.map((sub, index) => {
+          if (!sub || !sub.url) return null;
+          return (
+            <track
+              key={index}
+              kind="captions"
+              label={sub.label || `Language ${index}`}
+              srcLang={sub.lang || 'en'}
+              src={sub.url}
+              default={sub.default}
+            />
+          );
+        })}
       </video>
     </div>
   );
