@@ -49,13 +49,13 @@ export default function Navbar() {
       document.addEventListener("keydown", handleKeyPress);
       document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = "auto";
+      document.body.style.overflow = "";
     }
 
     return () => {
       window.removeEventListener("popstate", handlePopState);
       document.removeEventListener("keydown", handleKeyPress);
-      document.body.style.overflow = "auto";
+      document.body.style.overflow = "";
     };
   }, [isSearchOpen]);
 
