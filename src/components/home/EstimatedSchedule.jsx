@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getSchedule } from "../../services/api";
 import { useLanguage } from "../../context/LanguageContext";
@@ -19,20 +19,52 @@ const borderColors = [
 export default function EstimatedSchedule() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState("list"); // "list" | "grid"
+  const [filterShow, setFilterShow] = useState(false);
+  const [filters, setFilters] = useState({
+    format: "ALL", // ALL, TV, MOVIE, OVA, ONA
+    status: "ALL", // ALL, PAST, UPCOMING
+  });
+  const scrollRef = useRef(null);
+
   const { getTitle } = useLanguage();
   const navigate = useNavigate();
 
-  // Generate 7 days (Today + 6)
+  const scrollLeft = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ left: -200, behavior: "smooth" });
+    }
+  };
+
+  const scrollRight = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ left: 200, behavior: "smooth" });
+    }
+  };
+
+  // Generate 21 days (3 days past + Today + 17 days future)
   const days = [];
-  for (let i = 0; i < 7; i++) {
+  for (let i = -3; i <= 17; i++) {
     const d = new Date();
     d.setDate(d.getDate() + i);
     days.push(d);
   }
 
-  // Current start/end range for fetching (broad range to cover all 7 days)
-  const startTs = Math.floor(new Date().setHours(0, 0, 0, 0) / 1000);
-  const endTs = startTs + (7 * 86400);
+  // Scroll to "Today" when component mounts
+  useEffect(() => {
+    if (scrollRef.current) {
+      const todayBtn = scrollRef.current.querySelector('[data-today="true"]');
+      if (todayBtn) {
+        // Small delay ensures layout is complete
+        setTimeout(() => {
+          todayBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }, 100);
+      }
+    }
+  }, []);
+
+  // Current start/end range for fetching (only fetch for the currently selected day to avoid API limits)
+  const startTs = Math.floor(new Date(selectedDate).setHours(0, 0, 0, 0) / 1000);
+  const endTs = startTs + 86400;
 
   const { data: scheduleData = [], isLoading } = useQuery({
     queryKey: ["schedule-section", startTs, endTs],
@@ -40,11 +72,22 @@ export default function EstimatedSchedule() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Filter items for the selected date
-  const selectedDayItems = scheduleData
+  // Filter items for the selected date and active filters
+  let selectedDayItems = scheduleData
     .filter((s) => {
       const itemDate = new Date(s.airingAt * 1000).toDateString();
-      return itemDate === selectedDate.toDateString() && !s.media?.isAdult;
+      if (itemDate !== selectedDate.toDateString() || s.media?.isAdult) return false;
+
+      const isPast = s.airingAt * 1000 < Date.now();
+      if (filters.status === "PAST" && !isPast) return false;
+      if (filters.status === "UPCOMING" && isPast) return false;
+
+      if (filters.format !== "ALL") {
+        const format = s.media?.format || "TV";
+        if (format !== filters.format) return false;
+      }
+
+      return true;
     })
     .sort((a, b) => a.airingAt - b.airingAt);
 
@@ -70,76 +113,137 @@ export default function EstimatedSchedule() {
       <div className="bg-[#111111] rounded-[6px] border border-white/5 overflow-hidden">
         
         {/* Header Area */}
-        <div className="p-4 border-b border-white/5">
-          <div className="flex items-center justify-between mb-4">
+        <div className="p-3 md:p-4 border-b border-white/5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 md:mb-4 gap-3 sm:gap-0">
             <div className="flex items-center gap-3">
               <div className="w-[3px] h-4 bg-red-600" />
-              <h2 className="text-[16px] font-black text-white uppercase tracking-wider">
+              <h2 className="text-[15px] md:text-[16px] font-black text-white uppercase tracking-wider">
                 Schedule
               </h2>
-              <button className="flex items-center gap-1 text-[11px] font-medium text-[#888] ml-2 hover:text-white transition-colors">
-                {tzName} ({offsetStr}) <ChevronDown size={12} />
+              <button className="flex items-center gap-1 text-[10px] md:text-[11px] font-medium text-[#888] ml-1 md:ml-2 hover:text-white transition-colors">
+                {tzName} <span className="hidden md:inline">({offsetStr})</span> <ChevronDown size={12} />
               </button>
             </div>
             
-            {/* List / Grid Toggle */}
-            <div className="hidden md:flex items-center bg-[#1a1a1a] rounded-[4px] p-0.5">
-              <button 
-                onClick={() => setViewMode("list")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[3px] text-[11px] font-bold transition-all ${viewMode === 'list' ? 'bg-[#ff4d2e] text-white shadow-[0_0_10px_rgba(255,77,46,0.2)]' : 'text-[#888] hover:text-white'}`}
-              >
-                <ListIcon size={14} /> LIST
-              </button>
-              <button 
-                onClick={() => setViewMode("grid")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[3px] text-[11px] font-bold transition-all ${viewMode === 'grid' ? 'bg-[#ff4d2e] text-white shadow-[0_0_10px_rgba(255,77,46,0.2)]' : 'text-[#888] hover:text-white'}`}
-              >
-                <LayoutGrid size={14} /> GRID
-              </button>
+            {/* Actions: List / Grid Toggle & Filter */}
+            <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+              <div className="flex items-center bg-[#1a1a1a] rounded-[4px] p-0.5">
+                <button 
+                  onClick={() => setViewMode("list")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 md:py-1.5 rounded-[3px] text-[10px] md:text-[11px] font-bold transition-all ${viewMode === 'list' ? 'bg-[#ff4d2e] text-white shadow-[0_0_10px_rgba(255,77,46,0.2)]' : 'text-[#888] hover:text-white'}`}
+                >
+                  <ListIcon size={14} /> <span className="hidden xs:inline">LIST</span>
+                </button>
+                <button 
+                  onClick={() => setViewMode("grid")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 md:py-1.5 rounded-[3px] text-[10px] md:text-[11px] font-bold transition-all ${viewMode === 'grid' ? 'bg-[#ff4d2e] text-white shadow-[0_0_10px_rgba(255,77,46,0.2)]' : 'text-[#888] hover:text-white'}`}
+                >
+                  <LayoutGrid size={14} /> <span className="hidden xs:inline">GRID</span>
+                </button>
+              </div>
+
+              <div className="relative z-50 shrink-0">
+                <button 
+                  onClick={() => setFilterShow(!filterShow)}
+                  className={`flex items-center gap-1.5 px-3 md:px-4 py-1.5 md:h-[32px] bg-[#1a1a1a] border border-white/5 rounded-[4px] hover:text-white transition-colors text-[10px] md:text-[12px] font-bold ${filterShow || filters.format !== 'ALL' || filters.status !== 'ALL' ? 'text-white' : 'text-[#888]'}`}
+                >
+                  <Filter size={14} className={filters.format !== 'ALL' || filters.status !== 'ALL' ? 'text-[#ff4d2e]' : ''} /> Filter
+                </button>
+
+                {filterShow && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setFilterShow(false)} />
+                    <div className="absolute top-full right-0 mt-2 w-[220px] bg-[#16171b] border border-white/10 rounded-[6px] shadow-2xl p-4 flex flex-col gap-4 z-50 origin-top-right animate-in fade-in zoom-in-95 duration-200">
+                      <div>
+                        <div className="text-[10px] font-bold text-[#666] uppercase tracking-wider mb-2 flex items-center justify-between">
+                          Show Format
+                          {filters.format !== "ALL" && (
+                            <button onClick={() => setFilters(p => ({...p, format: "ALL"}))} className="text-[#ff4d2e] hover:underline">Reset</button>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {["ALL", "TV", "MOVIE", "OVA", "ONA"].map(f => (
+                            <button 
+                              key={f}
+                              onClick={() => setFilters(prev => ({...prev, format: f}))}
+                              className={`px-2.5 py-1 text-[10px] font-bold rounded-[3px] transition-all ${filters.format === f ? 'bg-[#ff4d2e] text-white shadow-[0_0_10px_rgba(255,77,46,0.3)]' : 'bg-white/5 text-[#888] hover:text-white hover:bg-white/10'}`}
+                            >
+                              {f}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="h-[1px] bg-white/5 w-full" />
+
+                      <div>
+                        <div className="text-[10px] font-bold text-[#666] uppercase tracking-wider mb-2 flex items-center justify-between">
+                          Air Status
+                          {filters.status !== "ALL" && (
+                            <button onClick={() => setFilters(p => ({...p, status: "ALL"}))} className="text-[#ff4d2e] hover:underline">Reset</button>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {["ALL", "PAST", "UPCOMING"].map(s => (
+                            <button 
+                              key={s}
+                              onClick={() => setFilters(prev => ({...prev, status: s}))}
+                              className={`px-2.5 py-1 text-[10px] font-bold rounded-[3px] transition-all ${filters.status === s ? 'bg-[#ff4d2e] text-white shadow-[0_0_10px_rgba(255,77,46,0.3)]' : 'bg-white/5 text-[#888] hover:text-white hover:bg-white/10'}`}
+                            >
+                              {s}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
           {/* Date Selector Row */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide flex-1">
-              <button className="w-8 h-12 rounded-[4px] bg-[#1a1a1a] border border-white/5 flex items-center justify-center text-[#777] hover:text-white transition-all shrink-0">
-                <ChevronLeft size={16} />
-              </button>
-              
+          <div className="flex items-center">
+            <button 
+              onClick={scrollLeft}
+              className="hidden md:flex w-8 h-12 rounded-[4px] bg-[#1a1a1a] border border-white/5 items-center justify-center text-[#777] hover:text-white transition-all shrink-0 mr-2"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            
+            <div 
+              ref={scrollRef}
+              className="flex items-center gap-2 overflow-x-auto scrollbar-hide flex-1 pb-1 md:pb-0 snap-x"
+            >
               {days.map((date, i) => (
                 <button
                   key={i}
+                  data-today={isToday(date)}
                   onClick={() => setSelectedDate(date)}
-                  className={`flex flex-col items-center justify-center min-w-[70px] h-[56px] rounded-[4px] transition-all duration-200 shrink-0 ${
+                  className={`flex flex-col items-center justify-center min-w-[65px] md:min-w-[70px] h-[52px] md:h-[56px] rounded-[4px] transition-all duration-200 shrink-0 snap-start ${
                     isSelected(date)
                       ? "bg-[#ff4d2e] shadow-[0_0_15px_rgba(255,77,46,0.3)] border border-[#ff4d2e]"
                       : "bg-[#1a1a1a] border border-white/5 hover:bg-[#222]"
                   }`}
                 >
-                  <span className={`text-[9px] font-bold tracking-widest uppercase mb-[2px] ${isSelected(date) ? "text-white" : "text-[#777]"}`}>
+                  <span className={`text-[8px] md:text-[9px] font-bold tracking-widest uppercase mb-[2px] ${isSelected(date) ? "text-white" : "text-[#777]"}`}>
                     {isToday(date) ? "TODAY" : getDayName(date)}
                   </span>
-                  <span className={`text-[18px] leading-none font-black ${isSelected(date) ? "text-white" : "text-white"}`}>
+                  <span className={`text-[16px] md:text-[18px] leading-none font-black ${isSelected(date) ? "text-white" : "text-white"}`}>
                     {getDayNum(date)}
                   </span>
-                  <span className={`text-[9px] font-bold tracking-widest uppercase mt-[2px] ${isSelected(date) ? "text-white/80" : "text-[#777]"}`}>
+                  <span className={`text-[8px] md:text-[9px] font-bold tracking-widest uppercase mt-[2px] ${isSelected(date) ? "text-white/80" : "text-[#777]"}`}>
                     {getMonthName(date)}
                   </span>
                 </button>
               ))}
-
-              <button className="w-8 h-12 rounded-[4px] bg-[#1a1a1a] border border-white/5 flex items-center justify-center text-[#777] hover:text-white transition-all shrink-0">
-                <ChevronRight size={16} />
-              </button>
             </div>
 
             <button 
-              onClick={() => {
-                alert("Filter functionality coming soon!");
-              }}
-              className="hidden md:flex items-center gap-1.5 px-4 h-[40px] ml-4 bg-[#1a1a1a] border border-white/5 rounded-[4px] text-[#888] hover:text-white transition-colors text-[12px] font-bold shrink-0"
+              onClick={scrollRight}
+              className="hidden md:flex w-8 h-12 rounded-[4px] bg-[#1a1a1a] border border-white/5 items-center justify-center text-[#777] hover:text-white transition-all shrink-0 ml-2"
             >
-              <Filter size={14} /> Filter
+              <ChevronRight size={16} />
             </button>
           </div>
         </div>
@@ -176,55 +280,55 @@ export default function EstimatedSchedule() {
                       )}
 
                       {/* Left Section */}
-                      <div className="flex items-center gap-4 min-w-0">
-                        <span className={`text-[12px] font-medium w-10 shrink-0 ${isPast ? "text-[#666]" : "text-[#aaa]"}`}>
-                          {formatTime(item.airingAt)}
-                        </span>
-                        
-                        <div className="shrink-0 flex items-center justify-center w-5">
-                          {isPast ? (
-                            <CheckCircle2 size={16} className="text-[#22c55e]" />
-                          ) : (
-                            <Clock size={16} className="text-[#3b82f6]" />
-                          )}
-                        </div>
-
-                        <img 
-                          src={item.media?.coverImage?.medium || item.media?.coverImage?.large} 
-                          alt={getTitle(item.media?.title)}
-                          className="w-[35px] h-[48px] object-cover rounded-[2px] shrink-0 bg-[#222]"
-                          loading="lazy"
-                        />
-
-                        <div className="flex flex-col min-w-0 py-0.5">
-                          <h3 className={`text-[14px] font-bold truncate transition-colors ${isPast ? "text-[#999] group-hover:text-white" : "text-white group-hover:text-[#ff4d2e]"}`}>
-                            {getTitle(item.media?.title)}
-                          </h3>
-                          <div className="flex items-center gap-1.5 mt-1.5">
-                            <span className="text-[9px] font-bold text-[#888] bg-[#222] px-1.5 py-0.5 rounded-[2px]">
-                              {item.media?.format || "TV"}
-                            </span>
-                            <span className="text-[9px] font-bold text-[#3b82f6]">SUB</span>
-                          </div>
-                        </div>
+                    <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
+                      <span className={`text-[11px] md:text-[12px] font-medium w-9 md:w-10 shrink-0 ${isPast ? "text-[#666]" : "text-[#aaa]"}`}>
+                        {formatTime(item.airingAt)}
+                      </span>
+                      
+                      <div className="flex shrink-0 items-center justify-center w-4 md:w-5">
+                        {isPast ? (
+                          <CheckCircle2 size={14} className="text-[#22c55e] md:w-4 md:h-4" />
+                        ) : (
+                          <Clock size={14} className="text-[#3b82f6] md:w-4 md:h-4" />
+                        )}
                       </div>
 
-                      {/* Right Section */}
-                      <div className="flex items-center gap-5 shrink-0 pl-4">
-                        <span className="text-[11px] font-bold uppercase bg-[#222] text-[#888] px-2.5 py-1 rounded-[2px]">
-                          EP {item.episode}
-                        </span>
-                        <div className="w-5 flex items-center justify-center">
-                          {isPast ? (
-                            <CheckCircle2 size={16} className="text-[#8b5cf6]" />
-                          ) : (
-                            <Bell size={16} className="text-[#666] hover:text-white transition-colors" />
-                          )}
+                      <img 
+                        src={item.media?.coverImage?.medium || item.media?.coverImage?.large} 
+                        alt={getTitle(item.media?.title)}
+                        className="w-[30px] h-[42px] md:w-[35px] md:h-[48px] object-cover rounded-[2px] shrink-0 bg-[#222]"
+                        loading="lazy"
+                      />
+
+                      <div className="flex flex-col min-w-0 py-0.5">
+                        <h3 className={`text-[13px] md:text-[14px] font-bold truncate transition-colors ${isPast ? "text-[#999] group-hover:text-white" : "text-white group-hover:text-[#ff4d2e]"}`}>
+                          {getTitle(item.media?.title)}
+                        </h3>
+                        <div className="flex items-center gap-1.5 mt-1 md:mt-1.5">
+                          <span className="text-[8px] md:text-[9px] font-bold text-[#888] bg-[#222] px-1.5 py-0.5 rounded-[2px]">
+                            {item.media?.format || "TV"}
+                          </span>
+                          <span className="text-[8px] md:text-[9px] font-bold text-[#3b82f6]">SUB</span>
                         </div>
                       </div>
                     </div>
-                  );
-                })}
+
+                    {/* Right Section */}
+                    <div className="flex items-center gap-3 md:gap-5 shrink-0 pl-2 md:pl-4">
+                      <span className="text-[10px] md:text-[11px] font-bold uppercase bg-[#222] text-[#888] px-2 py-1 md:px-2.5 md:py-1 rounded-[2px]">
+                        EP {item.episode}
+                      </span>
+                      <div className="hidden sm:flex w-5 items-center justify-center">
+                        {isPast ? (
+                          <CheckCircle2 size={16} className="text-[#8b5cf6]" />
+                        ) : (
+                          <Bell size={16} className="text-[#666] hover:text-white transition-colors" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4 p-4">

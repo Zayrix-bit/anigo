@@ -133,7 +133,7 @@ export default function Portal() {
               <div className="relative z-10 space-y-6 h-full flex flex-col">
                 <div className="space-y-3">
                   <h2 className="text-[18px] font-black uppercase tracking-[0.2em] text-white/80 border-l-4 border-red-600 pl-4 py-1">
-                    AniXo: Best Free Anime Streaming
+                    AniXO: Best Free Anime Streaming
                   </h2>
                   <p className="text-[13px] leading-[1.6] text-white/50 font-medium">
                     Anime transcends mere animation; it serves as a portal to captivating worlds brimming with emotion,
@@ -142,16 +142,16 @@ export default function Portal() {
                   </p>
                   <p className="text-[13px] leading-[1.6] text-white/50 font-medium">
                     However, not all platforms deliver an exceptional experience. Among the myriad options,
-                    <span className="text-red-500"> AniXo.online </span> shines as a beacon of excellence for enthusiasts.
+                    <span className="text-red-500"> AniXO.online </span> shines as a beacon of excellence for enthusiasts.
                   </p>
                 </div>
 
                 <div className="space-y-3">
                   <h3 className="text-[16px] font-bold text-white/90">
-                    1. What is AniXo.online?
+                    1. What is AniXO.online?
                   </h3>
                   <p className="text-[12px] leading-[1.6] text-white/40">
-                    AniXo is a premium anime platform that offers a safe, fast, and high-quality streaming experience.
+                    AniXO is a premium anime platform that offers a safe, fast, and high-quality streaming experience.
                     We prioritize user interface, minimal ads, and vast database synchronization
                     for the most accurate tracking.
                   </p>
