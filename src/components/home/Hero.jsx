@@ -187,7 +187,9 @@ export default function Hero({ bgImages = [] }) {
                         <img
                           src={anime.coverImage?.medium || anime.coverImage?.large}
                           alt={getTitle(anime.title)}
-                          className="w-[50px] h-[70px] object-cover rounded-[3px] flex-shrink-0 bg-[#2a2a2a]"
+                          loading="lazy"
+                          onLoad={(e) => e.target.classList.remove("opacity-0")}
+                          className="w-[50px] h-[70px] object-cover opacity-0 transition-opacity duration-300 rounded-[3px] flex-shrink-0 bg-[#2a2a2a]"
                         />
                         <div className="flex flex-col min-w-0 justify-center">
                           <span className="text-white text-[15px] font-bold truncate mb-2">

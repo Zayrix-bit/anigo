@@ -41,7 +41,9 @@ function ListItem({ anime }) {
       <img
         src={anime.coverImage?.medium || anime.coverImage?.large}
         alt={getTitle(anime.title)}
-        className="w-[42px] h-[56px] object-cover rounded-[2px] shrink-0 bg-[#2a2a2a]"
+        loading="lazy"
+        onLoad={(e) => e.target.classList.remove("opacity-0")}
+        className="w-[42px] h-[56px] object-cover opacity-0 transition-opacity duration-500 rounded-[2px] shrink-0 bg-[#2a2a2a]"
       />
       <div className="min-w-0 flex-1">
         <p className="text-[12.5px] text-[#ccc] truncate group-hover:text-white transition-colors leading-snug">
@@ -77,7 +79,9 @@ function RankedItem({ anime, rank, featured }) {
           <img
             src={anime.coverImage?.large}
             alt={getTitle(anime.title)}
-            className="w-full aspect-16/10 object-cover group-hover:scale-110 transition-transform duration-700"
+            loading="lazy"
+            onLoad={(e) => e.target.classList.remove("opacity-0")}
+            className="w-full aspect-16/10 object-cover opacity-0 transition-all duration-700 group-hover:scale-110"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent" />
           {/* Large rank number */}
@@ -116,7 +120,9 @@ function RankedItem({ anime, rank, featured }) {
       <img
         src={anime.coverImage?.medium || anime.coverImage?.large}
         alt={getTitle(anime.title)}
-        className="w-[48px] h-[64px] object-cover rounded-[2px] shrink-0 bg-white/5 shadow-lg border border-white/5"
+        loading="lazy"
+        onLoad={(e) => e.target.classList.remove("opacity-0")}
+        className="w-[48px] h-[64px] object-cover opacity-0 transition-opacity duration-500 rounded-[2px] shrink-0 bg-white/5 shadow-lg border border-white/5"
       />
       <div className="min-w-0 flex-1">
         <p className="text-[13px] font-bold text-white/70 truncate group-hover:text-white transition-colors leading-tight uppercase">

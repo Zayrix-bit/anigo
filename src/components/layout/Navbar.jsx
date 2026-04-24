@@ -314,7 +314,9 @@ export default function Navbar() {
                                     <img
                                       src={anime.coverImage?.medium || anime.coverImage?.large}
                                       alt={getTitle(anime.title)}
-                                      className="w-[45px] h-[60px] object-cover rounded-[3px] flex-shrink-0 bg-white/5"
+                                      loading="lazy"
+                                      onLoad={(e) => e.target.classList.remove("opacity-0")}
+                                      className="w-[45px] h-[60px] object-cover opacity-0 transition-opacity duration-300 rounded-[3px] flex-shrink-0 bg-white/5"
                                     />
                                     <div className="flex flex-col min-w-0 justify-center">
                                       <span className="text-white text-[14px] font-bold truncate mb-1.5 group-hover:text-red-500 transition-colors">

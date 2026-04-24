@@ -50,7 +50,8 @@ export default function AnimeCard({ anime }) {
               alt={getTitle(anime.title)}
               loading="lazy"
               onError={() => setImgError(true)}
-              className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
+              onLoad={(e) => e.target.classList.remove("opacity-0")}
+              className="w-full h-full object-cover opacity-0 transition-all duration-700 ease-out group-hover:scale-105"
             />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center bg-[#222] text-white/20 p-4 text-center">
