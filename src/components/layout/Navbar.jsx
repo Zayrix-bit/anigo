@@ -130,7 +130,7 @@ export default function Navbar() {
                   window.scrollTo(0, 0);
                 }}
               >
-                <img src="/logo.png" alt="AniXO" className="h-[82px] md:h-[114px] w-auto object-contain" style={{ filter: 'brightness(1.2) contrast(1.1)' }} />
+                <img src="/logo.png" alt="AniXO" fetchPriority="high" decoding="async" className="h-[82px] md:h-[114px] w-auto object-contain" style={{ filter: 'brightness(1.2) contrast(1.1)' }} />
               </Link>
             )}
           </div>
