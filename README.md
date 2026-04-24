@@ -11,7 +11,7 @@ Below is the complete architectural layout of the project:
 ```text
 anixo/
 ├── api/                    # 🐍 Python Backend (Vercel Functions)
-│   └── index.py            # Unified API Core (Anikai, Aniwatch, Kitsu Fallback)
+│   └── index.py            # Unified API Core (Anikai, Gogoanime, Kitsu Fallback)
 ├── src/                    # ⚛️ React (Vite) Frontend
 │   ├── components/         # Reusable UI Components
 │   │   ├── common/         # AnimeCard, SkeletonCard, etc.

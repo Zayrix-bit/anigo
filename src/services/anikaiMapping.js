@@ -90,12 +90,10 @@ export function scoreMetadata(anilistData, anikaiInfo) {
 export function resolveMatch(results, anime, lang = 'sub') {
   if (!Array.isArray(results) || results.length === 0) return [];
   
-  const isAniwatch = results[0]?.source === 'aniwatch';
-  
   // Check Manual Overrides
   if (anime?.id && MAPPING_OVERRIDES[String(anime.id)]) {
     const override = MAPPING_OVERRIDES[String(anime.id)];
-    const targetKey = isAniwatch ? 'data_id' : 'slug';
+    const targetKey = 'slug';
     return results.filter(r => r[targetKey] === override).concat(results.filter(r => r[targetKey] !== override)).slice(0, 3);
   }
 
@@ -158,5 +156,3 @@ export function resolveMatch(results, anime, lang = 'sub') {
 
 // Keep the old name as alias for backward compatibility if needed, but we'll update Watch.jsx anyway
 export const resolveAnikaiMatch = resolveMatch;
-export const resolveAniwatchMatch = resolveMatch;
-

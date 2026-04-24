@@ -252,25 +252,6 @@ export async function resolveSlugToAnilist(slug) {
   }
 }
 
-export async function getAniwatchDetails(keyword) {
-  if (!keyword) return null;
-  try {
-    const { data: searchData } = await axios.get(`${PYTHON_API}/api/aniwatch/search`, {
-      params: { keyword }
-    });
-    if (searchData.success && searchData.aniwatch_id) {
-      const { data: infoData } = await axios.get(`${PYTHON_API}/api/aniwatch/info/${searchData.aniwatch_id}`);
-      if (infoData.success) {
-        return infoData;
-      }
-    }
-    return null;
-  } catch (err) {
-    console.error("Aniwatch info details failed:", err);
-    return null;
-  }
-}
-
 export async function getAnikaiDetails(slug) {
   if (!slug) return null;
   try {
@@ -300,30 +281,6 @@ export async function getAnikaiDetails(slug) {
       console.error("Anikai details failed:", err.message);
     }
     return null;
-  }
-}
-
-export async function getAniwatchId(keyword) {
-  if (!keyword) return null;
-  try {
-    const { data } = await axios.get(`${PYTHON_API}/api/aniwatch/search`, {
-      params: { keyword }
-    });
-    return data;
-  } catch (err) {
-    console.error("Aniwatch ID search failed:", err);
-    return null;
-  }
-}
-
-export async function getAniwatchEpisodes(aniwatchId) {
-  if (!aniwatchId) return [];
-  try {
-    const { data } = await axios.get(`${PYTHON_API}/api/aniwatch/episodes/${aniwatchId}`);
-    return data.episodes || [];
-  } catch (err) {
-    console.error("Aniwatch episodes failed:", err);
-    return [];
   }
 }
 
@@ -464,13 +421,6 @@ export async function getAnimeDetails(id, isMal = false) {
       if (resolutionData?.anilist_id) {
         finalId = resolutionData.anilist_id;
         console.log(`[Watch] Resolved slug ${id} -> AniList ID: ${finalId}`);
-      } else {
-        // Fallback to Aniwatch (legacy)
-        const aniwatchData = await getAniwatchDetails(id);
-        if (aniwatchData?.ani_id) {
-          finalId = aniwatchData.ani_id;
-          console.log(`[Watch] Resolved Aniwatch ${id} -> AniList ID: ${finalId}`);
-        }
       }
     } catch (err) {
       console.error("[Watch] Mapping resolution failed:", err);

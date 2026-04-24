@@ -291,7 +291,7 @@ class AnikaiScraper:
             "description": description,
         }
 
-        # Grid detail scraping (same labels as Aniwatch)
+
         label_map = {
             "Country:": "country",
             "Premiered:": "premiered",
@@ -450,7 +450,7 @@ class AnikaiScraper:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-#  ANIWATCH SCRAPER
+#  ANIKAI ADDITIONS
 # ═══════════════════════════════════════════════════════════════════════════════
 
     @cached("anikai:recent", ttl=300)

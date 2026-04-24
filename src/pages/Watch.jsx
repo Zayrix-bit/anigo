@@ -2,8 +2,8 @@ import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useParams, Link, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import { getAnimeDetails, getEpisodeTitles, getAniwatchId, getAniwatchEpisodes, getJikanAnimeDetails, getAnikaiDetails, getAniwatchDetails, getSecondaryEpisodeMeta, getMalSyncMapping } from "../services/api";
-import { resolveAnikaiMatch, resolveAniwatchMatch, scoreMetadata } from "../services/anikaiMapping";
+import { getAnimeDetails, getEpisodeTitles, getJikanAnimeDetails, getAnikaiDetails, getSecondaryEpisodeMeta, getMalSyncMapping } from "../services/api";
+import { resolveAnikaiMatch, scoreMetadata } from "../services/anikaiMapping";
 import { useLanguage } from "../context/LanguageContext";
 import { useUserList } from "../context/UserListContext";
 import { useLoading } from "../context/LoadingContext";
@@ -143,7 +143,6 @@ export default function Watch() {
   const [streamLoading, setStreamLoading] = useState(false);
   const [iframeLoaded, setIframeLoaded] = useState(false);
 
-  const [aniwatchEps, setAniwatchEps] = useState([]);
   const [anikaiEpisodes, setAnikaiEpisodes] = useState([]);
   const [fetchError, setFetchError] = useState(null);
 
@@ -311,7 +310,7 @@ export default function Watch() {
     staleTime: 1000 * 60 * 60 * 24,
   });
 
-  // MALSync Mapping for precise external IDs (Kitsu, Aniwatch, etc)
+  // MALSync Mapping for precise external IDs (Kitsu, etc)
   const { data: malsyncMapping } = useQuery({
     queryKey: ["malsyncMapping", anime?.idMal],
     queryFn: () => getMalSyncMapping(anime?.idMal),
@@ -330,34 +329,27 @@ export default function Watch() {
     staleTime: 1000 * 60 * 60 * 24,
   });
 
-  // ── Multi-level detail fetching (Aniwatch → Anikai → Jikan → Anilist) ──
+  // 🚀 Multi-level detail fetching (Anikai > Jikan > Anilist) 🚀
   const searchTitle = anime?.title?.english || anime?.title?.romaji || anime?.title?.native;
-
-  const { data: aniwatchDetails } = useQuery({
-    queryKey: ["aniwatchDetails", searchTitle],
-    queryFn: () => getAniwatchDetails(searchTitle),
-    enabled: !!searchTitle,
-    staleTime: 1000 * 60 * 60 * 24,
-  });
 
   const { data: anikaiDetails } = useQuery({
     queryKey: ["anikaiDetails", searchTitle],
     queryFn: () => getAnikaiDetails(searchTitle),
-    enabled: !!searchTitle && !aniwatchDetails,
+    enabled: !!searchTitle,
     staleTime: 1000 * 60 * 60 * 24,
   });
 
   const { data: jikanDetails } = useQuery({
     queryKey: ["jikanDetails", anime?.idMal],
     queryFn: () => getJikanAnimeDetails(anime?.idMal),
-    enabled: !!anime?.idMal && !aniwatchDetails && !anikaiDetails,
+    enabled: !!anime?.idMal && !anikaiDetails,
     staleTime: 1000 * 60 * 60 * 24,
   });
 
-  // Unified priority resolver: Aniwatch → Anikai → Jikan → Anilist
+  // Unified priority resolver: Anikai > Jikan > Anilist
   const resolvedInfo = useMemo(() => {
     const get = (field, ...fallbacks) => {
-      const sources = [aniwatchDetails, anikaiDetails];
+      const sources = [anikaiDetails];
       for (const src of sources) {
         if (src?.[field]) return src[field];
       }
@@ -400,7 +392,7 @@ export default function Watch() {
       genres: get("genres", anime.genres),
       rating: get("rating"),
     };
-  }, [anime, aniwatchDetails, anikaiDetails, jikanDetails]);
+  }, [anime, anikaiDetails, jikanDetails]);
 
   // Resolve current episode image for player background/loading placeholder
   const currentEpisodeImage = useMemo(() => {
@@ -423,91 +415,6 @@ export default function Watch() {
       anime?.coverImage?.large;
   }, [anime, malEpisodes, activeEpisode, kitsuEpisodes]);
 
-  useEffect(() => {
-    const searchTitle = anime?.title?.english || anime?.title?.romaji || anime?.title?.native;
-    if (!searchTitle) { setAniwatchEps([]); return; }
-    let cancelled = false;
-    (async () => {
-      try {
-        // Step 1: High purity mapping via MALSync
-        let strongCandidates = [];
-        if (anime?.idMal) {
-          try {
-            const { data: malsync } = await axios.get(`${PYTHON_API}/api/malsync/${anime.idMal}`);
-            const awData = malsync?.Sites?.Aniwatch;
-            if (awData) {
-              const firstKey = Object.keys(awData)[0];
-              const entry = awData[firstKey];
-              if (entry?.id) {
-                console.info("[Aniwatch] MALSync match found:", entry.title);
-                strongCandidates.push({
-                  title: entry.title,
-                  data_id: entry.id,
-                  score: 999, // Super high score
-                  source: 'aniwatch'
-                });
-              }
-            }
-          } catch {
-            console.warn("[Aniwatch] MALSync lookup failed, falling back to search.");
-          }
-        }
-
-        // Step 2: Dynamic Search
-        const searchResults = await getAniwatchId(searchTitle);
-        const candidates = resolveAniwatchMatch(strongCandidates.concat(searchResults), anime);
-
-        if (candidates.length === 0) {
-          setAniwatchEps([]);
-          return;
-        }
-
-        // Step 3: Deep Verification (Fetch info for top 3 in parallel)
-        console.group(`[Aniwatch] Deep Resolving: ${anime.title?.english || id}`);
-        const infoPromises = candidates.map(c =>
-          axios.get(`${PYTHON_API}/api/aniwatch/info/${c.data_id}`)
-            .then(res => ({ ...c, info: res.data }))
-            .catch(() => ({ ...c, info: null }))
-        );
-
-        const verificationResults = await Promise.all(infoPromises);
-        if (cancelled) {
-          console.groupEnd();
-          return;
-        }
-
-        const finalScored = verificationResults.map(v => {
-          const metaScore = (v.info?.success !== false && v.info) ? scoreMetadata(anime, v.info) : 0;
-          return { ...v, totalScore: (v.score || 0) + metaScore };
-        });
-
-        finalScored.sort((a, b) => b.totalScore - a.totalScore);
-        const best = finalScored[0];
-
-        // Detailed logs for browser console transparency
-        console.table(finalScored.map(f => ({
-          Title: f.title,
-          Initial: f.score,
-          MetaBonus: f.totalScore - f.score,
-          Total: f.totalScore,
-          Year: f.info?.premiered || f.info?.aired,
-          Eps: f.info?.episodes
-        })));
-        console.groupEnd();
-
-        const awId = best.data_id;
-        const eps = await getAniwatchEpisodes(awId);
-        if (!cancelled && eps) {
-          setAniwatchEps(eps);
-          console.log("[Aniwatch] Final Result: %s (%s) episodes=%d", best.title, awId, eps.length);
-        }
-      } catch (err) {
-        console.error("Aniwatch deep resolve error:", err);
-        if (!cancelled) setAniwatchEps([]);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [anime, id, PYTHON_API]);
 
   useEffect(() => {
     const searchTitle = anime?.title?.english || anime?.title?.romaji || anime?.title?.native;
@@ -986,17 +893,6 @@ export default function Watch() {
           url = `https://megaplay.buzz/stream/ani/${id}/${activeEpisode}/${playerLang}`;
         }
 
-        /* 
-        // --- SERVER 4: MEGAPLAY ANIWATCH (Offline) ---
-        else if (activeServer === 4) {
-          const awEp = aniwatchEps.find(e => String(e.number) === String(activeEpisode));
-          if (awEp) {
-            url = `https://megaplay.buzz/stream/s-2/${awEp.id}/${playerLang}`;
-          } else {
-            setFetchError("Aniwatch episode ID not found. Try Server 2 or 3.");
-          }
-        }
-        */
 
         if (url) {
           // Inject Autoplay and premium params
@@ -1035,7 +931,7 @@ export default function Watch() {
     fetchStream();
 
     return () => { cancelled = true; };
-  }, [id, anime?.id, anime?.idMal, activeEpisode, playerLang, activeServer, aniwatchEps, anikaiEpisodes, PYTHON_API, autoPlay, episodesList.length, prefetchNextEpisode]);
+  }, [id, anime?.id, anime?.idMal, activeEpisode, playerLang, activeServer, anikaiEpisodes, PYTHON_API, autoPlay, episodesList.length, prefetchNextEpisode]);
 
   const handleReport = async () => {
     // Simulate API call for reporting

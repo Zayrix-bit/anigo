@@ -7,10 +7,6 @@
       "destination": "/api/index.py"
     },
     {
-      "source": "/aniwatch-api/(.*)",
-      "destination": "https://aniwatchtv.to/$1"
-    },
-    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
