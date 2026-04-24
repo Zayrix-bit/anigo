@@ -5,6 +5,18 @@ const ANILIST_URL = import.meta.env.VITE_ANILIST_API || "https://graphql.anilist
 const ANIXO_SERVER = import.meta.env.PROD ? "" : (import.meta.env.VITE_ANIXO_SERVER || "http://127.0.0.1:5000");
 const PYTHON_API = import.meta.env.PROD ? "" : "http://127.0.0.1:5000";
 
+export const backendApi = axios.create({
+  baseURL: import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:5001",
+});
+
+backendApi.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 async function fetchFromAniList(query, variables = {}) {
   try {
     // Clean up variables to remove null/undefined/empty-string values

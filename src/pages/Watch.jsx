@@ -5,13 +5,15 @@ import axios from "axios";
 import { getAnimeDetails, getEpisodeTitles, getJikanAnimeDetails, getAnikaiDetails, getSecondaryEpisodeMeta, getMalSyncMapping } from "../services/api";
 import { resolveAnikaiMatch, scoreMetadata } from "../services/anikaiMapping";
 import { useLanguage } from "../context/LanguageContext";
-import { useUserList } from "../context/UserListContext";
 import { useLoading } from "../context/LoadingContext";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
 import AnimeCard from "../components/common/AnimeCard";
 import NextEpisodeBanner from "../components/common/NextEpisodeBanner";
 import VideoPlayer from "../components/common/VideoPlayer";
+import { useAuth } from "../hooks/useAuth";
+import { addToWatchlist, removeFromWatchlist, getWatchlist } from "../services/watchlistService";
+import { updateProgress } from "../services/progressService";
 import {
   ChevronLeft,
   ChevronRight,
@@ -53,17 +55,36 @@ import {
 export default function Watch() {
   const { id } = useParams();
   const location = useLocation();
-  const isMal = new URLSearchParams(location.search).get("mal") === "true";
+  const queryParams = new URLSearchParams(location.search);
+  const isMal = queryParams.get("mal") === "true";
+  const initialEp = parseInt(queryParams.get("ep")) || 1;
+  const initialTime = parseFloat(queryParams.get("t")) || 0;
+
   const { getTitle } = useLanguage();
-  const { list, addToList, removeFromList } = useUserList();
   const { setPageLoading } = useLoading();
 
-  const [activeEpisode, setActiveEpisode] = useState(1);
+  const [activeEpisode, setActiveEpisode] = useState(initialEp);
   const [addingAction, setAddingAction] = useState(false);
-  const [selectStatus, setSelectStatus] = useState("Watching");
   const [episodeLayout, setEpisodeLayout] = useState("list"); // "grid" | "list" | "detailed"
   const [playerLang, setPlayerLang] = useState("sub");
   const [activeServer, setActiveServer] = useState(1);
+
+  // Watchlist integration
+  const { user, setGlobalWatchlist, setGlobalProgress, globalSettings } = useAuth();
+  const [backendWatchlist, setBackendWatchlist] = useState([]);
+  const [isWatchlistLoading, setIsWatchlistLoading] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      getWatchlist().then(res => {
+        if (res.success) {
+          setBackendWatchlist(res.watchlist);
+        }
+      });
+    }
+  }, [user]);
+
+  const isBookmarked = backendWatchlist.some(item => item.animeId === String(id));
 
   // Safe localStorage helper
   const getSafeStorage = (key, defaultVal) => {
@@ -121,8 +142,43 @@ export default function Watch() {
     }
   }, [userRating, id]);
 
+  // Handle J/L key skipping based on user settings
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Don't trigger if user is typing in a search box or input
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      const skipVal = globalSettings?.skipSeconds || 5;
+      
+      if (e.key.toLowerCase() === 'l') {
+        // Skip Forward
+        window.postMessage({ event: "skip", amount: skipVal }, "*");
+      } else if (e.key.toLowerCase() === 'j') {
+        // Skip Backward
+        window.postMessage({ event: "skip", amount: -skipVal }, "*");
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [globalSettings]);
+
   const EPISODES_PER_PAGE = 50;
   const GOGO_SLUG_OVERRIDES = {};
+
+  // Sync with global settings
+  useEffect(() => {
+    if (globalSettings) {
+      if (globalSettings.videoLanguage === 'Dub') {
+        setPlayerLang('dub');
+      } else if (globalSettings.videoLanguage === 'Soft Sub' || globalSettings.videoLanguage === 'Hard Sub') {
+        setPlayerLang('sub');
+      }
+      
+      if (globalSettings.autoPlay !== undefined) setAutoPlay(globalSettings.autoPlay);
+      if (globalSettings.autoNext !== undefined) setAutoNext(globalSettings.autoNext);
+    }
+  }, [globalSettings]);
 
   // Reset active episode and page when navigating to a different anime/season
   useEffect(() => {
@@ -300,7 +356,7 @@ export default function Watch() {
 
     verifySources();
     return () => { cancelled = true; };
-  }, [activeEpisode, anikaiEpisodes, PYTHON_API]); // Removed playerLang to avoid re-triggering during fallback
+  }, [activeEpisode, anikaiEpisodes, PYTHON_API, playerLang]);
 
   // MAL Episode Titles (lightweight — only for episode names)
   const { data: malEpisodes } = useQuery({
@@ -494,8 +550,6 @@ export default function Watch() {
   }, [anime, id, PYTHON_API, playerLang]);
 
 
-  const existingEntry = list.find((i) => i.animeId === Number(id));
-
   const episodesList = useMemo(() => {
     if (!anime) return [];
     let count = anime.episodes;
@@ -639,19 +693,46 @@ export default function Watch() {
     return title;
   };
 
-  const handleAddToList = (status) => {
-    const finalStatus = typeof status === "string" ? status : selectStatus;
-    addToList({
-      animeId: anime.id,
-      title: anime.title,
-      coverImage: anime.coverImage?.large,
-      totalEpisodes: anime.episodes,
-      progress: existingEntry ? existingEntry.progress : 0,
-      status: finalStatus,
-      score: existingEntry ? existingEntry.score : 0,
-    });
-    setSelectStatus(finalStatus);
-    setAddingAction(false);
+
+
+  const handleUpdateStatus = async (status) => {
+    if (!user) return alert("Please login to manage your list");
+    
+    setIsWatchlistLoading(true);
+    const coverImg = anime.coverImage?.large || anime.coverImage?.extraLarge;
+    const res = await addToWatchlist(String(id), getTitle(anime.title), coverImg, status);
+    
+    if (res.success) {
+      setBackendWatchlist(res.watchlist);
+      setAddingAction(false);
+      // Update global context too if needed
+      if (typeof setGlobalWatchlist === 'function') {
+        setGlobalWatchlist(res.watchlist);
+      }
+    }
+    setIsWatchlistLoading(false);
+  };
+
+  const handleToggleBackendWatchlist = async () => {
+    if (!user) return alert("Please login to add to watchlist");
+    
+    if (isBookmarked) {
+      // If already bookmarked, just open the status selector
+      setAddingAction(!addingAction);
+    } else {
+      // If not bookmarked, add it with default 'Planning' status
+      setIsWatchlistLoading(true);
+      const coverImg = anime.coverImage?.large || anime.coverImage?.extraLarge;
+      const res = await addToWatchlist(String(id), getTitle(anime.title), coverImg, 'Planning');
+      if (res.success) {
+        setBackendWatchlist(res.watchlist);
+        // Update global context too if needed
+        if (typeof setGlobalWatchlist === 'function') {
+          setGlobalWatchlist(res.watchlist);
+        }
+      }
+      setIsWatchlistLoading(false);
+    }
   };
 
 
@@ -680,6 +761,7 @@ export default function Watch() {
   }, []);
 
   const iframeRef = useRef(null);
+  const lastProgressSync = useRef(0);
 
   // ── Megaplay Player Events Listener ──
   useEffect(() => {
@@ -740,11 +822,34 @@ export default function Watch() {
           }
         }
       }
+
+      // 3. Track Progress for Continue Watching
+      const currentTime = data.currentTime || data.time || data.seconds || data.progress?.seconds;
+      const duration = data.duration || data.totalTime || data.progress?.duration;
+      
+      if (user && typeof currentTime === 'number' && currentTime > 10) { // Don't track if < 10s
+        const now = Date.now();
+        // Sync every 10 seconds to avoid spamming the DB
+        if (now - lastProgressSync.current > 10000) {
+          lastProgressSync.current = now;
+          const coverImg = anime?.coverImage?.large || anime?.coverImage?.extraLarge;
+          updateProgress(String(id), activeEpisode, Math.floor(currentTime), duration ? Math.floor(duration) : null, getTitle(anime?.title), coverImg)
+            .then(res => {
+              if (res.success && res.progress) {
+                setGlobalProgress(prev => {
+                  const filtered = prev.filter(p => p.animeId !== String(id));
+                  return [res.progress, ...filtered].slice(0, 20);
+                });
+              }
+            })
+            .catch(err => console.error("Failed to sync progress:", err));
+        }
+      }
     };
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [goNextEpisode, autoSkip, skipTimes, activeEpisode]); // Removed autoNext from deps, using autoNextRef instead for stability
+  }, [goNextEpisode, autoSkip, skipTimes, activeEpisode, user, id, anime, getTitle, setGlobalProgress]); // Removed autoNext from deps, using autoNextRef instead for stability
 
   // ── Performance: Prefetch Next Episode ──
   const prefetchNextEpisode = useCallback(async (nextEpNum) => {
@@ -931,7 +1036,7 @@ export default function Watch() {
     fetchStream();
 
     return () => { cancelled = true; };
-  }, [id, anime?.id, anime?.idMal, activeEpisode, playerLang, activeServer, anikaiEpisodes, PYTHON_API, autoPlay, episodesList.length, prefetchNextEpisode]);
+  }, [id, anime?.id, anime?.idMal, activeEpisode, playerLang, activeServer, anikaiEpisodes, PYTHON_API, autoPlay, episodesList.length, prefetchNextEpisode, setPageLoading]);
 
   const handleReport = async () => {
     // Simulate API call for reporting
@@ -1051,6 +1156,7 @@ export default function Watch() {
                     type={streamData.sources[0].type}
                     poster={anime?.coverImage?.extraLarge || anime?.coverImage?.large}
                     subtitles={streamData.subtitles || []}
+                    initialTime={initialTime}
                   />
                 ) : (
                   <iframe
@@ -1164,11 +1270,18 @@ export default function Watch() {
                   <>
                     <div className="relative">
                       <button
-                        onClick={() => setAddingAction(!addingAction)}
-                        className={`flex items-center gap-2 transition-all ${existingEntry ? 'text-red-600' : 'text-white/40 hover:text-white'}`}
+                        onClick={handleToggleBackendWatchlist}
+                        disabled={isWatchlistLoading}
+                        className={`flex items-center gap-2 transition-all ${isBookmarked ? 'text-red-600' : 'text-white/40 hover:text-white'}`}
                       >
-                        <Heart size={16} fill={existingEntry ? "currentColor" : "none"} />
-                        <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">{existingEntry ? existingEntry.status : 'Add to list'}</span>
+                        {isWatchlistLoading ? (
+                           <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                           <Heart size={16} fill={isBookmarked ? "currentColor" : "none"} />
+                        )}
+                        <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">
+                          {isBookmarked ? (backendWatchlist.find(i => i.animeId === String(id))?.status || 'Added') : 'Add to Watchlist'}
+                        </span>
                       </button>
 
                       {addingAction && (
@@ -1176,8 +1289,9 @@ export default function Watch() {
                           {['Watching', 'On-Hold', 'Planning', 'Completed', 'Dropped'].map((status) => (
                             <button
                               key={status}
-                              onClick={() => handleAddToList(status)}
-                              className={`w-full text-left px-4 py-2.5 text-[12px] font-medium transition-colors ${(existingEntry ? existingEntry.status : selectStatus) === status
+                              onClick={() => handleUpdateStatus(status)}
+                              className={`w-full text-left px-4 py-2.5 text-[12px] font-medium transition-colors ${
+                                (backendWatchlist.find(i => i.animeId === String(id))?.status || 'Planning') === status
                                 ? 'text-white border-l-2 border-red-600 bg-white/5'
                                 : 'text-white/60 hover:text-white hover:bg-[#222]'
                                 }`}
@@ -1185,17 +1299,23 @@ export default function Watch() {
                               {status}
                             </button>
                           ))}
-                          {existingEntry && (
-                            <button
-                              onClick={() => {
-                                removeFromList(anime.id);
-                                setAddingAction(false);
-                              }}
-                              className="w-full text-left px-4 py-2.5 text-[12px] font-medium transition-colors text-red-500 hover:text-white hover:bg-red-600/20 border-t border-white/5"
-                            >
-                              Remove
-                            </button>
-                          )}
+                          <button
+                            onClick={async () => {
+                              setIsWatchlistLoading(true);
+                              const res = await removeFromWatchlist(id);
+                              if (res.success) {
+                                setBackendWatchlist(res.watchlist);
+                                if (typeof setGlobalWatchlist === 'function') {
+                                  setGlobalWatchlist(res.watchlist);
+                                }
+                              }
+                              setAddingAction(false);
+                              setIsWatchlistLoading(false);
+                            }}
+                            className="w-full text-left px-4 py-2.5 text-[12px] font-medium transition-colors text-red-500 hover:text-white hover:bg-red-600/20 border-t border-white/5"
+                          >
+                            Remove
+                          </button>
                         </div>
                       )}
                     </div>

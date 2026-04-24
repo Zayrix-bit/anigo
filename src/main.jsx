@@ -6,6 +6,7 @@ import App from './App.jsx'
 import { LanguageProvider } from './context/LanguageContext.jsx'
 import { UserListProvider } from './context/UserListContext.jsx'
 import { LoadingProvider } from './context/LoadingContext.jsx'
+import { AuthProvider } from './store/authStore.jsx'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -19,13 +20,15 @@ const queryClient = new QueryClient({
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <LanguageProvider>
-        <UserListProvider>
-          <LoadingProvider>
-            <App />
-          </LoadingProvider>
-        </UserListProvider>
-      </LanguageProvider>
+      <AuthProvider>
+        <LanguageProvider>
+          <UserListProvider>
+            <LoadingProvider>
+              <App />
+            </LoadingProvider>
+          </UserListProvider>
+        </LanguageProvider>
+      </AuthProvider>
     </QueryClientProvider>
   </StrictMode>,
 )

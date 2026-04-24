@@ -3,7 +3,7 @@ import Hls from 'hls.js';
 import Plyr from 'plyr';
 import 'plyr/dist/plyr.css';
 
-const VideoPlayer = ({ src, type, poster, subtitles = [], onEnded, onTimeUpdate }) => {
+const VideoPlayer = ({ src, type, poster, subtitles = [], onEnded, onTimeUpdate, initialTime = 0 }) => {
   const videoRef = useRef(null);
   const playerRef = useRef(null);
   const hlsRef = useRef(null);
@@ -30,6 +30,15 @@ const VideoPlayer = ({ src, type, poster, subtitles = [], onEnded, onTimeUpdate 
     video.addEventListener('ended', handleEnded);
     video.addEventListener('timeupdate', handleTimeUpdate);
 
+    // Handle skip messages from parent
+    const handleMessage = (e) => {
+      if (e.data?.event === "skip") {
+        const amount = e.data.amount || 0;
+        video.currentTime = Math.max(0, Math.min(video.duration, video.currentTime + amount));
+      }
+    };
+    window.addEventListener("message", handleMessage);
+
     // Default Plyr options
     const defaultOptions = {
       captions: { active: true, update: true, language: 'en' },
@@ -48,6 +57,15 @@ const VideoPlayer = ({ src, type, poster, subtitles = [], onEnded, onTimeUpdate 
         playerRef.current.destroy();
       }
       playerRef.current = new Plyr(video, defaultOptions);
+      
+      // Resume from initialTime
+      if (initialTime > 0) {
+        const handleReady = () => {
+          video.currentTime = initialTime;
+          video.removeEventListener('canplay', handleReady);
+        };
+        video.addEventListener('canplay', handleReady);
+      }
     };
 
     const isHls = type === 'hls' || src.includes('.m3u8') || src.includes('index.m3u8');
@@ -95,6 +113,7 @@ const VideoPlayer = ({ src, type, poster, subtitles = [], onEnded, onTimeUpdate 
     return () => {
       video.removeEventListener('ended', handleEnded);
       video.removeEventListener('timeupdate', handleTimeUpdate);
+      window.removeEventListener("message", handleMessage);
       if (playerRef.current && typeof playerRef.current.destroy === 'function') {
         playerRef.current.destroy();
         playerRef.current = null;
@@ -104,7 +123,7 @@ const VideoPlayer = ({ src, type, poster, subtitles = [], onEnded, onTimeUpdate 
         hlsRef.current = null;
       }
     };
-  }, [src]);
+  }, [src, type, onEnded, onTimeUpdate, initialTime]);
 
   return (
     <div className="w-full h-full bg-black flex items-center justify-center">

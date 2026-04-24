@@ -24,14 +24,17 @@ export default function AnimeCard({ anime }) {
   return (
     <div
       className="w-full cursor-pointer group flex flex-col"
-      onClick={() => navigate(`/watch/${anime.id}${anime.isMAL ? "?mal=true" : ""}`)}
+      onClick={() => {
+        const resumeParams = anime.isProgress ? `&ep=${anime.episode}&t=${anime.currentTime}` : "";
+        navigate(`/watch/${anime.id}${anime.isMAL ? "?mal=true" : "?"}${resumeParams}`);
+      }}
     >
       {/* Poster image area with wrapping for jutting tags */}
       <div className="relative">
         {/* Stacked Tags (Aligned to Left Corner) */}
         <div className="absolute -top-1 left-0 flex flex-col items-start z-40 gap-1">
           <div className="bg-red-600 text-white text-[9px] font-black px-1.5 py-[3px] flex items-center justify-center min-w-[28px]">
-            {format}
+            {anime.isProgress ? `EP ${anime.episode}` : format}
           </div>
         </div>
 
@@ -62,6 +65,16 @@ export default function AnimeCard({ anime }) {
             </div>
           )}
 
+          {/* Progress Bar for Continue Watching */}
+          {anime.isProgress && anime.currentTime && anime.duration && (
+            <div className="absolute bottom-0 left-0 w-full h-[3px] bg-white/20 z-40">
+              <div 
+                className="h-full bg-red-600 shadow-[0_0_8px_rgba(220,38,38,0.8)]" 
+                style={{ width: `${Math.min(100, (anime.currentTime / anime.duration) * 100)}%` }}
+              />
+            </div>
+          )}
+
           {/* Hover overlay (darker gradient + play icon) */}
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none z-30">
             <svg
@@ -75,31 +88,36 @@ export default function AnimeCard({ anime }) {
         </div>
       </div>
 
-      {/* CC Info Section (New Cut-Shape Design) */}
-      <div className="flex justify-center -mt-[2px] relative z-20">
-        <div className="flex items-center bg-[#050505] rounded-[4px] border border-white/5 overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
-          {/* Cut-Corner CC Badge */}
-          <div
-            className="bg-red-600 px-1.5 py-0.5 flex items-center justify-center relative"
-            style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%, 15% 100%, 0 85%)' }}
-          >
-            <span className="text-[10px] font-medium text-white italic tracking-tight">CC</span>
-          </div>
+      {/* CC Info Section (New Cut-Shape Design) - Hide for progress items to keep it clean */}
+      {!anime.isProgress && (
+        <div className="flex justify-center -mt-[2px] relative z-20">
+          <div className="flex items-center bg-[#050505] rounded-[4px] border border-white/5 overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
+            <div
+              className="bg-red-600 px-1.5 py-0.5 flex items-center justify-center relative"
+              style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%, 15% 100%, 0 85%)' }}
+            >
+              <span className="text-[10px] font-medium text-white italic tracking-tight">CC</span>
+            </div>
 
-          {/* Episode Count */}
-          <div className="flex items-center px-2 py-0.5 gap-1.5">
-            <span className="text-[12px] font-normal text-white leading-none">{releasedEpisodes || "0"}</span>
-            <div className="w-[1px] h-2.5 bg-white/10" />
-            <span className="text-[10px] font-normal text-white/40 leading-none">{totalEpisodes}</span>
+            <div className="flex items-center px-2 py-0.5 gap-1.5">
+              <span className="text-[12px] font-normal text-white leading-none">{releasedEpisodes || "0"}</span>
+              <div className="w-[1px] h-2.5 bg-white/10" />
+              <span className="text-[10px] font-normal text-white/40 leading-none">{totalEpisodes}</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Title Section */}
       <div className="w-full mt-2 text-center px-1">
         <h3 className="text-[13px] md:text-[14px] font-normal text-white/80 line-clamp-2 leading-[1.4] group-hover:text-red-500 transition-colors">
           {getTitle(anime.title)}
         </h3>
+        {anime.isProgress && (
+           <span className="text-[10px] text-white/40 font-medium uppercase tracking-wider block mt-1">
+             Resume at {Math.floor(anime.currentTime / 60)}:{(anime.currentTime % 60).toString().padStart(2, '0')}
+           </span>
+        )}
       </div>
     </div>
   );

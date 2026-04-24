@@ -1228,15 +1228,16 @@ def api_anilist_proxy():
 
     # 3. Basic abuse mitigation: Ensure query contains AniList keywords
     query_str = str(payload.get("query", "")).lower()
-    allowed_keywords = ["page", "media", "staff", "character", "studio", "airing", "trend", "search"]
+    allowed_keywords = ["page", "media", "staff", "character", "studio", "airing", "trend", "search", "genrecollection", "airingschedules"]
     if not any(k in query_str for k in allowed_keywords):
          return {"error": "Forbidden: Non-AniList query pattern detected"}, 403
 
     log.info("AniList Proxy: 🌐 Fetching from Source...")
-    resp = http.post(
+    import requests
+    resp = requests.post(
         "https://graphql.anilist.co",
         json=payload,
-        headers={"Content-Type": "application/json", "Accept": "application/json"},
+        headers={"Content-Type": "application/json", "Accept": "application/json", "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"},
         timeout=20
     )
 

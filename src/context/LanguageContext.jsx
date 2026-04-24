@@ -1,24 +1,32 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { useAuth } from "../hooks/useAuth";
 
 const LanguageContext = createContext();
 
 export function LanguageProvider({ children }) {
-  const [language, setLanguage] = useState(() => {
+  const { globalSettings } = useAuth();
+
+  // Local language state (for guest users or manual navbar toggle)
+  const [localLanguage, setLocalLanguage] = useState(() => {
     return localStorage.getItem("anime_language") || "EN";
   });
 
+  // Derived: globalSettings takes priority when available, local toggle is fallback
+  const language = globalSettings?.titleLanguage || localLanguage;
+
+  // Persist to localStorage whenever effective language changes
   useEffect(() => {
     localStorage.setItem("anime_language", language);
   }, [language]);
 
-  const toggleLanguage = () => {
-    setLanguage(prev => (prev === "EN" ? "JP" : "EN"));
-  };
+  const toggleLanguage = useCallback(() => {
+    setLocalLanguage(prev => (prev === "EN" ? "JP" : "EN"));
+  }, []);
 
-  const setEN = () => setLanguage("EN");
-  const setJP = () => setLanguage("JP");
+  const setEN = useCallback(() => setLocalLanguage("EN"), []);
+  const setJP = useCallback(() => setLocalLanguage("JP"), []);
 
-  const getTitle = (titleObj) => {
+  const getTitle = useCallback((titleObj) => {
     if (!titleObj) return "Unknown Title";
     if (language === "EN") {
       return titleObj.english || titleObj.romaji || titleObj.native || "Unknown Title";
@@ -26,7 +34,7 @@ export function LanguageProvider({ children }) {
       // JP toggle now prioritizes Romaji (Japenglish) instead of Pure Japanese characters
       return titleObj.romaji || titleObj.english || titleObj.native || "Unknown Title";
     }
-  };
+  }, [language]);
 
   return (
     <LanguageContext.Provider value={{ language, toggleLanguage, setEN, setJP, getTitle }}>

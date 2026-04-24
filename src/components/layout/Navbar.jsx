@@ -6,6 +6,10 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useQuery } from "@tanstack/react-query";
 import { searchAnime, getAnikaiGenres } from "../../services/api";
 import { MessageSquare, Mic, Clock } from "lucide-react";
+import { useAuth } from "../../hooks/useAuth";
+import LoginModal from "../auth/LoginModal";
+import AvatarDropdown from "../user/AvatarDropdown";
+import NotificationDropdown from "../user/NotificationDropdown";
 
 
 export default function Navbar() {
@@ -23,6 +27,11 @@ export default function Navbar() {
   const [showSearchResults, setShowSearchResults] = useState(false);
   const searchContainerRef = useRef(null);
   const { language, setEN, setJP, getTitle } = useLanguage();
+  const { user, loading: authLoading, globalNotifications } = useAuth();
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+
+  const unreadCount = globalNotifications.filter(n => !n.isRead).length;
 
   const { data: dynamicGenresData } = useQuery({
     queryKey: ["anikaiGenres"],
@@ -364,21 +373,43 @@ export default function Navbar() {
                 )}
               </div>
 
-              {/* Bell icon - Hidden on mobile for cleaner look */}
-              <button className="hidden md:block text-[#888] hover:text-white transition-all transform hover:scale-110">
-                <svg className="w-[19px] h-[19px] fill-[#888]/10 hover:fill-current" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
-                </svg>
-              </button>
+              {/* Bell icon - Functional with Dropdown */}
+              <div className="relative">
+                <button 
+                  onClick={() => setIsNotifOpen(!isNotifOpen)}
+                  className={`hidden md:block transition-all transform hover:scale-110 ${isNotifOpen ? 'text-red-500' : 'text-[#888] hover:text-white'}`}
+                >
+                  <svg className={`w-[19px] h-[19px] ${unreadCount > 0 ? 'fill-red-500/20' : 'fill-[#888]/10'}`} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+                  </svg>
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-[#121212] animate-in zoom-in duration-300">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+                <NotificationDropdown isOpen={isNotifOpen} onClose={() => setIsNotifOpen(false)} />
+              </div>
 
-              {/* Login Link */}
-              <button className="text-[12px] font-bold bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-[4px] transition-all uppercase tracking-widest ml-1 shadow-[0_0_15px_rgba(220,38,38,0.3)]">
-                Login
-              </button>
+              {/* Login Link / Avatar Dropdown */}
+              {!authLoading && (
+                user ? (
+                  <AvatarDropdown />
+                ) : (
+                  <button 
+                    onClick={() => setShowLoginModal(true)}
+                    className="text-[12px] font-bold bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-[4px] transition-all uppercase tracking-widest ml-1 shadow-[0_0_15px_rgba(220,38,38,0.3)] cursor-pointer"
+                  >
+                    Login
+                  </button>
+                )
+              )}
             </div>
           )}
         </div>
       </nav>
+
+      <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
 
       {/* Navigation Sidebar (includes Schedule) */}
       <NavSidebar

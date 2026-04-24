@@ -13,6 +13,12 @@ const Staff = lazy(() => import("./pages/Staff"));
 const Schedule = lazy(() => import("./pages/Schedule"));
 const DMCA = lazy(() => import("./pages/DMCA"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService"));
+const Watchlist = lazy(() => import("./pages/Watchlist"));
+const Profile = lazy(() => import("./pages/Profile"));
+const Settings = lazy(() => import("./pages/Settings"));
+const ContinueWatching = lazy(() => import("./pages/ContinueWatching"));
+const Notifications = lazy(() => import("./pages/Notifications"));
+const ImportExport = lazy(() => import("./pages/ImportExport"));
 
 export default function App() {
   return (
@@ -30,6 +36,12 @@ export default function App() {
           <Route path="/schedule" element={<Schedule />} />
           <Route path="/dmca" element={<DMCA />} />
           <Route path="/terms" element={<TermsOfService />} />
+          <Route path="/watchlist" element={<Watchlist />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/watching" element={<ContinueWatching />} />
+          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/import" element={<ImportExport />} />
         </Routes>
       </Suspense>
     </Router>

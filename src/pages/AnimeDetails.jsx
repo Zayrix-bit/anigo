@@ -3,15 +3,65 @@ import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getAnimeDetails } from "../services/api";
 import { useLanguage } from "../context/LanguageContext";
-import { useUserList } from "../context/UserListContext";
 import Navbar from "../components/layout/Navbar";
+import { useAuth } from "../hooks/useAuth";
+import { addToWatchlist, removeFromWatchlist, getWatchlist } from "../services/watchlistService";
+import { useEffect } from "react";
 
 export default function AnimeDetails() {
   const { id } = useParams();
   const { getTitle } = useLanguage();
-  const { list, addToList } = useUserList();
   const [addingAction, setAddingAction] = useState(false);
   const [selectStatus, setSelectStatus] = useState("Watching");
+  const { user } = useAuth();
+  const [watchlist, setWatchlist] = useState([]);
+  const [isWatchlistLoading, setIsWatchlistLoading] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      getWatchlist().then(res => {
+        if (res.success) {
+          setWatchlist(res.watchlist);
+        }
+      });
+    }
+  }, [user]);
+
+  const isBookmarked = watchlist.some(item => item.animeId === String(id));
+
+  const handleToggleWatchlist = async () => {
+    if (!user) return alert("Please login to add to watchlist");
+    
+    setIsWatchlistLoading(true);
+    if (isBookmarked) {
+      const res = await removeFromWatchlist(id);
+      if (res.success) {
+        setWatchlist(res.watchlist);
+      }
+    } else {
+      const coverImg = anime.coverImage?.large || anime.coverImage?.extraLarge;
+      const res = await addToWatchlist(String(id), getTitle(anime.title), coverImg, 'Planning');
+      if (res.success) {
+        setWatchlist(res.watchlist);
+      }
+    }
+    setIsWatchlistLoading(false);
+  };
+
+  const handleUpdateStatus = async (status) => {
+    if (!user) return alert("Please login to manage your list");
+    
+    setIsWatchlistLoading(true);
+    const coverImg = anime.coverImage?.large || anime.coverImage?.extraLarge;
+    const res = await addToWatchlist(String(id), getTitle(anime.title), coverImg, status);
+    
+    if (res.success) {
+      setWatchlist(res.watchlist);
+      setSelectStatus(status);
+      setAddingAction(false);
+    }
+    setIsWatchlistLoading(false);
+  };
 
   const { data: anime, isLoading } = useQuery({
     queryKey: ["animeDetails", id],
@@ -19,8 +69,7 @@ export default function AnimeDetails() {
     enabled: !!id,
   });
 
-  // Check if it's already in the list
-  const existingEntry = list.find((i) => i.animeId === Number(id));
+
 
   if (isLoading) {
     return (
@@ -39,18 +88,7 @@ export default function AnimeDetails() {
     );
   }
 
-  const handleAddToList = () => {
-    addToList({
-      animeId: anime.id,
-      title: anime.title,
-      coverImage: anime.coverImage?.large,
-      totalEpisodes: anime.episodes,
-      progress: existingEntry ? existingEntry.progress : 0,
-      status: selectStatus,
-      score: existingEntry ? existingEntry.score : 0,
-    });
-    setAddingAction(false);
-  };
+
 
   return (
     <div className="min-h-screen bg-[#111] text-white flex flex-col font-sans pb-20">
@@ -94,12 +132,12 @@ export default function AnimeDetails() {
 
             {/* List Actions */}
             <div className="mt-6 flex flex-col gap-3">
-              {existingEntry && !addingAction ? (
+              {isBookmarked && !addingAction ? (
                 <div className="w-full flex items-center justify-between bg-white/[0.05] border border-white/10 rounded-[4px] px-3 py-2">
                   <div className="flex flex-col">
                     <span className="text-[10px] text-[#aaa] uppercase tracking-wider font-bold">In List</span>
                     <span className="text-[13px] font-bold text-white leading-tight">
-                      {existingEntry.status}
+                      {watchlist.find(i => i.animeId === String(id))?.status || 'Added'}
                     </span>
                   </div>
                   <button
@@ -114,31 +152,51 @@ export default function AnimeDetails() {
               ) : (
                 <div className="bg-[#1a1a1a] rounded-[4px] border border-white/5 p-3 flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-200">
                   <select
-                    value={selectStatus}
-                    onChange={(e) => setSelectStatus(e.target.value)}
+                    value={watchlist.find(i => i.animeId === String(id))?.status || selectStatus}
+                    onChange={(e) => handleUpdateStatus(e.target.value)}
                     className="w-full bg-[#2a2a2a] text-white text-[13px] font-medium outline-none rounded p-2 border border-transparent focus:border-red-600 transition-colors"
                   >
-                    <option value="Watching">Watching</option>
-                    <option value="Planned">Planned</option>
-                    <option value="Completed">Completed</option>
-                    <option value="Dropped">Dropped</option>
+                    {['Watching', 'On-Hold', 'Planning', 'Completed', 'Dropped'].map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
                   </select>
-                  <button
-                    onClick={handleAddToList}
-                    className="w-full bg-red-600 hover:bg-red-700 text-white font-bold text-[13px] py-2 rounded transition-colors"
-                  >
-                    {existingEntry ? "Update List" : "Add to List"}
-                  </button>
-                  {addingAction && existingEntry && (
+                  {isBookmarked ? (
+                     <button
+                        onClick={() => setAddingAction(false)}
+                        className="w-full bg-white/[0.05] hover:bg-white/[0.1] text-white font-bold text-[13px] py-2 rounded transition-colors"
+                      >
+                        Close
+                      </button>
+                  ) : (
                     <button
-                      onClick={() => setAddingAction(false)}
-                      className="w-full bg-transparent hover:bg-white/[0.05] text-[#888] hover:text-white font-bold text-[12px] py-1.5 rounded transition-colors"
+                      onClick={() => handleUpdateStatus(selectStatus)}
+                      className="w-full bg-red-600 hover:bg-red-700 text-white font-bold text-[13px] py-2 rounded transition-colors"
                     >
-                      Cancel
+                      Add to List
                     </button>
                   )}
                 </div>
               )}
+              
+              {/* Watchlist / Bookmark Button */}
+              <button
+                onClick={handleToggleWatchlist}
+                disabled={isWatchlistLoading}
+                className={`w-full font-bold text-[13px] py-2.5 rounded transition-colors flex items-center justify-center gap-2 mt-2 ${
+                  isBookmarked 
+                    ? "bg-white/[0.05] text-white hover:bg-red-600 border border-white/10" 
+                    : "bg-transparent text-[#888] border border-[#888] hover:text-white hover:border-white"
+                }`}
+              >
+                {isWatchlistLoading ? (
+                  <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <svg className="w-4 h-4" fill={isBookmarked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                  </svg>
+                )}
+                {isBookmarked ? "Remove from Watchlist" : "Add to Watchlist"}
+              </button>
             </div>
           </div>
 

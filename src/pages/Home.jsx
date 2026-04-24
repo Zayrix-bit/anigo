@@ -12,12 +12,14 @@ import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
 import Hero from "../components/home/Hero";
 import AnimeRow from "../components/home/AnimeRow";
+import { useAuth } from "../hooks/useAuth";
 import Pagination from "../components/common/Pagination";
 import ThreeColumnSection from "../components/home/ThreeColumnSection";
 import AlphabetNav from "../components/home/AlphabetNav";
 import EstimatedSchedule from "../components/home/EstimatedSchedule";
 
 export default function Home() {
+  const { globalProgress, user } = useAuth();
   const [activeSeasonTab, setActiveSeasonTab] = useState("All");
   const cardsPerPage = 36;
 
@@ -134,6 +136,26 @@ export default function Home() {
     <div className="min-h-screen bg-[#0a0a0a] text-white overflow-x-hidden">
       <Navbar />
       <Hero bgImages={bgImages} />
+
+      {/* Continue Watching */}
+      {user && globalProgress && globalProgress.length > 0 && (
+        <div id="continue-watching" className="pt-4">
+          <AnimeRow
+            title="CONTINUE WATCHING"
+            data={globalProgress.map(p => ({
+              id: p.animeId,
+              title: { english: p.title },
+              coverImage: { large: p.coverImage },
+              episode: p.episode,
+              currentTime: p.currentTime,
+              duration: p.duration,
+              isProgress: true
+            }))}
+            isLoading={false}
+            limit={6}
+          />
+        </div>
+      )}
 
       {/* Popular This Season */}
       <div id="popular-season">
