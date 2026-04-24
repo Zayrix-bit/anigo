@@ -46,7 +46,7 @@ export default function PageLoader() {
   // When global loading finishes, give it a moment to fade out
   useEffect(() => {
     if (!isPageLoading && progress === 100) {
-      const timer = setTimeout(() => setVisible(false), 500);
+      const timer = setTimeout(() => setVisible(false), 400);
       return () => clearTimeout(timer);
     }
   }, [isPageLoading, progress]);

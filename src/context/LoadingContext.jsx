@@ -34,7 +34,7 @@ export function LoadingProvider({ children }) {
 
       const hideTimer = setTimeout(() => {
         setProgress(0);
-      }, 500); // Wait for transition
+      }, 800); // Wait for transition and PageLoader fade out
 
       return () => clearTimeout(hideTimer);
     }
