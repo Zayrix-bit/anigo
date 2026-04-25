@@ -91,11 +91,11 @@ export default function Browse() {
     }
   }, [setSearchParams]);
   const queryData = useMemo(() => {
-    const isAnikai = filters.include.length > 0;
+    const isAnikai = filters.include.length > 0 && !filters.search;
     const vars = {
       page: filters.page,
-      perPage: 36,
-      sort: [filters.sort],
+      perPage: filters.search ? 50 : 36,
+      sort: filters.search ? undefined : [filters.sort],
     };
 
     if (filters.search) vars.search = filters.search;
@@ -872,9 +872,13 @@ export default function Browse() {
         </div>
 
         {/* Persistent Pagination */}
-        {result.pageInfo?.lastPage > 1 && (
-          <div className={`mt-24 transition-all duration-1000 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}>
-            <Pagination currentPage={filters.page} totalPages={result.pageInfo.lastPage} onPageChange={handlePageChange} />
+        {(result.pageInfo?.lastPage > 1 || result.pageInfo?.hasNextPage) && (
+          <div className={`mt-24 mb-10 transition-all duration-1000 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}>
+            <Pagination 
+              currentPage={filters.page} 
+              totalPages={result.pageInfo?.lastPage || (result.pageInfo?.hasNextPage ? filters.page + 1 : filters.page)} 
+              onPageChange={handlePageChange} 
+            />
           </div>
         )}
       </main>

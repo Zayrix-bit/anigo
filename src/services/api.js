@@ -100,7 +100,7 @@ export async function getSchedule(startTimestamp, endTimestamp) {
 
 export const SEARCH_QUERY = `
   query ($search: String, $page: Int) {
-    Page(page: $page, perPage: 10) {
+    Page(page: $page, perPage: 50) {
       media(type: ANIME, search: $search) {
         id
         title { romaji english native }
