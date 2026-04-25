@@ -157,7 +157,7 @@ export default function AnimeDetails() {
                     className="w-full bg-[#2a2a2a] text-white text-[13px] font-medium outline-none rounded p-2 border border-transparent focus:border-red-600 transition-colors"
                   >
                     {['Watching', 'On-Hold', 'Planning', 'Completed', 'Dropped'].map(s => (
-                      <option key={s} value={s}>{s}</option>
+                      <option key={s} value={s} className="bg-[#222] text-white py-1">{s}</option>
                     ))}
                   </select>
                   {isBookmarked ? (

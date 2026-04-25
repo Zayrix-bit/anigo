@@ -715,24 +715,8 @@ export default function Watch() {
 
   const handleToggleBackendWatchlist = async () => {
     if (!user) return alert("Please login to add to watchlist");
-    
-    if (isBookmarked) {
-      // If already bookmarked, just open the status selector
-      setAddingAction(!addingAction);
-    } else {
-      // If not bookmarked, add it with default 'Planning' status
-      setIsWatchlistLoading(true);
-      const coverImg = anime.coverImage?.large || anime.coverImage?.extraLarge;
-      const res = await addToWatchlist(String(id), getTitle(anime.title), coverImg, 'Planning');
-      if (res.success) {
-        setBackendWatchlist(res.watchlist);
-        // Update global context too if needed
-        if (typeof setGlobalWatchlist === 'function') {
-          setGlobalWatchlist(res.watchlist);
-        }
-      }
-      setIsWatchlistLoading(false);
-    }
+    // Always open the status selector dropdown so user can pick 'Watching', 'On-Hold', etc.
+    setAddingAction(!addingAction);
   };
 
 
@@ -1195,31 +1179,31 @@ export default function Watch() {
             </section>
 
             {/* Premium Action Toolbar (Matches Image) */}
-            <section className={`flex flex-wrap items-center justify-between py-3 border-b border-white/5 bg-[#0d0d0d] px-4 shadow-lg gap-y-4 lg:gap-y-0 transition-all duration-500 ${isFocusMode ? 'fixed bottom-8 left-1/2 -translate-x-1/2 z-50 rounded-full border border-white/10 px-8 py-4 opacity-0 hover:opacity-100 bg-black/60 backdrop-blur-md pointer-events-auto min-w-[600px]' : ''}`}>
-              <div className="flex items-center gap-5 lg:gap-8">
+            <section className={`flex flex-wrap items-center justify-center sm:justify-between py-3 border-b border-white/5 bg-[#0d0d0d] px-4 shadow-lg gap-4 sm:gap-6 transition-all duration-500 ${isFocusMode ? 'fixed bottom-8 left-1/2 -translate-x-1/2 z-50 rounded-full border border-white/10 px-8 py-4 opacity-0 hover:opacity-100 bg-black/60 backdrop-blur-md pointer-events-auto min-w-[600px]' : ''}`}>
+              <div className="flex flex-wrap justify-center items-center gap-4 sm:gap-5 lg:gap-6">
                 {/* Focus */}
                 <button
                   onClick={() => setIsFocusMode(!isFocusMode)}
-                  className={`flex items-center gap-2 transition-all ${isFocusMode ? 'text-yellow-500' : 'text-white/40 hover:text-white'}`}
+                  className={`flex items-center gap-1.5 transition-all ${isFocusMode ? 'text-yellow-500' : 'text-white/40 hover:text-white'}`}
                 >
-                  {isFocusMode ? <Sun size={16} /> : <Moon size={16} />}
-                  <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">Focus</span>
+                  {isFocusMode ? <Sun size={15} /> : <Moon size={15} />}
+                  <span className="text-[9px] font-bold uppercase tracking-wider hidden sm:inline">Focus</span>
                 </button>
 
                 {/* AutoPlay */}
                 <button
                   onClick={() => setAutoPlay(!autoPlay)}
-                  className="flex items-center gap-2 group transition-all"
+                  className="flex items-center gap-1.5 group transition-all"
                 >
                   <div className="relative">
                     <PlayCircle
-                      size={16}
+                      size={15}
                       fill="none"
                       className={`transition-all ${autoPlay ? 'text-white' : 'text-white/40 group-hover:text-white'} group-hover:scale-110`}
                     />
                     {autoPlay && <span className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]" />}
                   </div>
-                  <span className={`text-[10px] font-bold uppercase tracking-wider hidden sm:inline transition-colors ${autoPlay ? 'text-red-500' : 'text-white/40 group-hover:text-white'}`}>
+                  <span className={`text-[9px] font-bold uppercase tracking-wider hidden sm:inline transition-colors ${autoPlay ? 'text-red-500' : 'text-white/40 group-hover:text-white'}`}>
                     AutoPlay
                   </span>
                 </button>
@@ -1227,17 +1211,17 @@ export default function Watch() {
                 {/* AutoNext */}
                 <button
                   onClick={() => setAutoNext(!autoNext)}
-                  className="flex items-center gap-2 group transition-all"
+                  className="flex items-center gap-1.5 group transition-all"
                 >
                   <div className="relative">
                     <FastForward
-                      size={16}
+                      size={15}
                       fill="none"
                       className={`transition-all ${autoNext ? 'text-white' : 'text-white/40 group-hover:text-white'} group-hover:scale-110`}
                     />
                     {autoNext && <span className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]" />}
                   </div>
-                  <span className={`text-[10px] font-bold uppercase tracking-wider hidden sm:inline transition-colors ${autoNext ? 'text-red-500' : 'text-white/40 group-hover:text-white'}`}>
+                  <span className={`text-[9px] font-bold uppercase tracking-wider hidden sm:inline transition-colors ${autoNext ? 'text-red-500' : 'text-white/40 group-hover:text-white'}`}>
                     AutoNext
                   </span>
                 </button>
@@ -1245,16 +1229,16 @@ export default function Watch() {
                 {/* AutoSkip */}
                 <button
                   onClick={() => setAutoSkip(!autoSkip)}
-                  className="flex items-center gap-2 group transition-all"
+                  className="flex items-center gap-1.5 group transition-all"
                 >
                   <div className="relative">
                     <Scissors
-                      size={16}
+                      size={15}
                       className={`transition-all ${autoSkip ? 'text-white' : 'text-white/40 group-hover:text-white'} group-hover:scale-110`}
                     />
                     {autoSkip && <span className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]" />}
                   </div>
-                  <span className={`text-[10px] font-bold uppercase tracking-wider hidden sm:inline transition-colors ${autoSkip ? 'text-red-500' : 'text-white/40 group-hover:text-white'}`}>
+                  <span className={`text-[9px] font-bold uppercase tracking-wider hidden sm:inline transition-colors ${autoSkip ? 'text-red-500' : 'text-white/40 group-hover:text-white'}`}>
                     AutoSkip
                   </span>
                 </button>
@@ -1262,28 +1246,28 @@ export default function Watch() {
                 {/* Add Skiptime */}
                 <button
                   onClick={() => setShowSkipModal(true)}
-                  className={`flex items-center gap-2 transition-all ${skipTimes[activeEpisode] ? 'text-yellow-500' : 'text-white/40 hover:text-white'}`}
+                  className={`flex items-center gap-1.5 transition-all ${skipTimes[activeEpisode] ? 'text-yellow-500' : 'text-white/40 hover:text-white'}`}
                 >
-                  <Timer size={16} />
-                  <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">Add Skiptime</span>
+                  <Timer size={15} />
+                  <span className="text-[9px] font-bold uppercase tracking-wider hidden sm:inline">Add Skiptime</span>
                 </button>
               </div>
 
-              <div className="flex items-center gap-5 lg:gap-8">
-                <div className="flex items-center gap-4">
+              <div className="flex flex-wrap justify-center items-center gap-4 sm:gap-5 lg:gap-6">
+                <div className="flex items-center gap-3 lg:gap-4 border-r border-white/5 pr-4 sm:pr-5 lg:pr-6">
                   <button
                     onClick={goPrevEpisode}
                     className={`flex items-center gap-1.5 transition-all ${activeEpisode <= 1 ? 'opacity-20 pointer-events-none' : 'text-white/40 hover:text-white'}`}
                   >
-                    <SkipBack size={16} />
-                    <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">Prev</span>
+                    <SkipBack size={15} />
+                    <span className="text-[9px] font-bold uppercase tracking-wider hidden sm:inline">Prev</span>
                   </button>
                   <button
                     onClick={goNextEpisode}
                     className={`flex items-center gap-1.5 transition-all ${activeEpisode >= episodesList.length ? 'opacity-20 pointer-events-none' : 'text-white/40 hover:text-white'}`}
                   >
-                    <SkipForward size={16} />
-                    <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">Next</span>
+                    <SkipForward size={15} />
+                    <span className="text-[9px] font-bold uppercase tracking-wider hidden sm:inline">Next</span>
                   </button>
                 </div>
 
@@ -1293,14 +1277,14 @@ export default function Watch() {
                       <button
                         onClick={handleToggleBackendWatchlist}
                         disabled={isWatchlistLoading}
-                        className={`flex items-center gap-2 transition-all ${isBookmarked ? 'text-red-600' : 'text-white/40 hover:text-white'}`}
+                        className={`flex items-center gap-1.5 transition-all ${isBookmarked ? 'text-red-600' : 'text-white/40 hover:text-white'}`}
                       >
                         {isWatchlistLoading ? (
-                           <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+                           <div className="w-3.5 h-3.5 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
                         ) : (
-                           <Heart size={16} fill={isBookmarked ? "currentColor" : "none"} />
+                           <Heart size={15} fill={isBookmarked ? "currentColor" : "none"} />
                         )}
-                        <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">
+                        <span className="text-[9px] font-bold uppercase tracking-wider hidden sm:inline">
                           {isBookmarked ? (backendWatchlist.find(i => i.animeId === String(id))?.status || 'Added') : 'Add to Watchlist'}
                         </span>
                       </button>
@@ -1343,10 +1327,10 @@ export default function Watch() {
 
                     <button
                       onClick={handleReport}
-                      className={`flex items-center gap-2 transition-all ${reportSuccess ? 'text-green-500' : 'text-white/40 hover:text-white'}`}
+                      className={`flex items-center gap-1.5 transition-all ${reportSuccess ? 'text-green-500' : 'text-white/40 hover:text-white'}`}
                     >
-                      <Flag size={16} />
-                      <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">{reportSuccess ? 'Reported!' : 'Report'}</span>
+                      <Flag size={15} />
+                      <span className="text-[9px] font-bold uppercase tracking-wider hidden sm:inline">{reportSuccess ? 'Reported!' : 'Report'}</span>
                     </button>
                   </>
                 )}

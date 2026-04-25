@@ -112,7 +112,7 @@ export default function Watchlist() {
 
 
 
-        {watchlist.length === 0 ? (
+        {watchlist.filter(item => activeTab === "All" || item.status === activeTab).length === 0 ? (
           <div className="flex flex-col items-center justify-center py-32 bg-[#141414] border border-white/5 rounded-md shadow-2xl relative overflow-hidden">
             {/* Background Glow */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-red-600/5 rounded-full blur-[80px]"></div>
@@ -122,7 +122,9 @@ export default function Watchlist() {
               <Heart size={32} className="text-red-500" strokeWidth={1.5} />
             </div>
             
-            <h2 className="text-2xl font-bold text-white mb-2 uppercase tracking-wide">Your Watchlist is Empty</h2>
+            <h2 className="text-2xl font-bold text-white mb-2 uppercase tracking-wide">
+              {activeTab === "All" ? "Your Watchlist is Empty" : `No ${activeTab} Anime`}
+            </h2>
             <p className="text-white/40 mb-8 text-[15px] max-w-sm text-center leading-relaxed">
               Looks like you haven't saved any anime yet. Discover new shows and add them to your collection!
             </p>
@@ -136,7 +138,9 @@ export default function Watchlist() {
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
-            {watchlist.map((item) => (
+            {watchlist
+              .filter(item => activeTab === "All" || item.status === activeTab)
+              .map((item) => (
               <Link 
                 to={`/anime/${item.animeId}`} 
                 key={item.animeId}
