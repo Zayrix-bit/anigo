@@ -951,26 +951,33 @@ export default function Watch() {
             // 2. Parallel Fetch: Request both SUB and DUB to populate cache and speed up toggle
             // But only await the requested language to show UI as fast as possible
             const fetchLang = (lang) => axios.get(`${PYTHON_API}/api/anikai/stream/${token}`, {
-              params: { lang, strict: true }
+              params: { lang, strict: true },
+              timeout: 15000
             }).then(res => res.data).catch(() => null);
 
             // Start both in parallel
             const subPromise = fetchLang('sub');
             const dubPromise = fetchLang('dub');
 
-            // Wait for requested language
+            // Wait for requested language with a fallback to avoid crash
             const targetData = await (playerLang === 'sub' ? subPromise : dubPromise);
 
             if (cancelled) return;
 
+            if (!targetData) {
+              setFetchError(`Backend did not respond for ${playerLang.toUpperCase()}.`);
+              setStreamLoading(false);
+              return;
+            }
+
             const hasContent = (Array.isArray(targetData.sources) && targetData.sources.length > 0) || targetData.iframe_url;
 
-            if (targetData?.success && hasContent) {
+            if (targetData.success && hasContent) {
               streamCache.current.set(cacheKey, targetData);
               setStreamData(targetData);
               url = targetData.iframe_url || (targetData.sources?.[0]?.url);
 
-              // Background: Populate other language cache once primary is done
+              // Background: Populate other language cache
               const otherData = await (playerLang === 'sub' ? dubPromise : subPromise);
               const hasOtherContent = otherData?.success && ((Array.isArray(otherData.sources) && otherData.sources.length > 0) || otherData.iframe_url);
               if (hasOtherContent) {

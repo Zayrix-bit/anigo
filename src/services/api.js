@@ -6,7 +6,7 @@ const ANIXO_SERVER = "";
 const PYTHON_API = "";
 
 export const backendApi = axios.create({
-  baseURL: import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:5001",
+  baseURL: "",
 });
 
 backendApi.interceptors.request.use((config) => {
