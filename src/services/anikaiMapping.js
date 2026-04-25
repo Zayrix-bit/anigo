@@ -3,6 +3,7 @@ const MAPPING_OVERRIDES = {
   // Re:Zero Season 2 often maps to Season 3 on Anikai due to title proximity
   "108632": "re-zero-starting-life-in-another-world-season-2", // Re:Zero S2
   "115044": "re-zero-starting-life-in-another-world-season-2", // Re:Zero S2 Part 2
+  "170019": "otonari-no-tenshi-sama-ni-itsunomanika-dame-ningen-ni-sareteita-ken-2-39rx", // The Angel Next Door S2
 };
 
 function extractSeason(title) {
@@ -10,20 +11,22 @@ function extractSeason(title) {
   const t = title.toLowerCase();
   
   // 1. Check for specific common season words first for speed
-  if (t.includes(" 2nd season") || t.includes(" season 2") || t.match(/\bs2\b/)) return 2;
-  if (t.includes(" 3rd season") || t.includes(" season 3") || t.match(/\bs3\b/)) return 3;
-  if (t.includes(" 4th season") || t.includes(" season 4") || t.match(/\bs4\b/)) return 4;
+  if (t.includes("2nd season") || t.includes("season 2") || t.match(/\bs2\b/)) return 2;
+  if (t.includes("3rd season") || t.includes("season 3") || t.match(/\bs3\b/)) return 3;
+  if (t.includes("4th season") || t.includes("season 4") || t.match(/\bs4\b/)) return 4;
 
   // 2. Fallback to regex patterns loop
   const patterns = [
-    /season\s+(\d+)/,
-    /(\d+)(st|nd|rd|th)\s+season/,
-    /\bs(\d+)\b/
+    /season\s*(\d+)/i,
+    /(\d+)(st|nd|rd|th)\s*season/i,
+    /\bs(\d+)\b/i,
+    /\s(\d+)\s*$/ // Matches a number at the end of the title (e.g. "Anime 2")
   ];
   
   for (const p of patterns) {
     const m = t.match(p);
     if (m && m[1]) return parseInt(m[1]);
+    if (m && m[0] && m[0].trim().match(/^\d+$/)) return parseInt(m[0].trim());
   }
 
   // 3. Roman numerals check
@@ -64,11 +67,11 @@ export function scoreMetadata(anilistData, anikaiInfo) {
 
   if (targetYear && resultYear) {
     if (targetYear === resultYear) {
-      score += 60;
+      score += 100;
     } else if (Math.abs(targetYear - resultYear) <= 1) {
-      score += 20;
+      score += 30;
     } else {
-      score -= 50; 
+      score -= 500; // STRICT: Reject if years don't match for seasons
     }
   }
 
@@ -124,16 +127,20 @@ export function resolveMatch(results, anime, lang = 'sub') {
     if (isDubRequested && hasDubTag) score += 50;
     if (!isDubRequested && !hasDubTag) score += 50;
 
-    // 2. Season Matching
+    // 2. Season Matching (CRITICAL LOCK)
     const resSeason = extractSeason(res.title);
-    if (resSeason === aniListSeason) score += 100;
-    else score -= 150;
+    if (resSeason === aniListSeason) {
+      score += 200; 
+    } else {
+      // If we specifically want a later season, disqualify Season 1
+      score -= 800; 
+    }
 
     // 3. Part/Cour Matching
     const resPart = extractPart(res.title);
     if (resPart !== null && aniListPart !== null) {
-      if (resPart === aniListPart) score += 50;
-      else score -= 80;
+      if (resPart === aniListPart) score += 100;
+      else score -= 600;
     }
 
     // 4. Title proximity
@@ -147,10 +154,21 @@ export function resolveMatch(results, anime, lang = 'sub') {
       }
     }
 
+    const debugInfo = {
+      title: res.title,
+      score: score,
+      detectedSeason: resSeason,
+      targetSeason: aniListSeason,
+      year: res.year,
+      slug: res.slug
+    };
+    console.log("[Mapping Debug]", debugInfo);
+
     return { ...res, score };
   });
 
   scoredResults.sort((a, b) => b.score - a.score);
+  console.log("[Mapping] Winner:", scoredResults[0]?.title, "with score:", scoredResults[0]?.score);
   return scoredResults.slice(0, 3);
 }
 

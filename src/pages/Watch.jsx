@@ -1132,6 +1132,8 @@ export default function Watch() {
 
         const resolvedSlug = best.slug;
         const aniId = best.info?.ani_id;
+        
+        console.info(`[Anikai] Resolving episodes for: ${best.title} (ID: ${aniId}, Slug: ${resolvedSlug})`);
 
         if (!best.info?.success || !aniId) {
           setAnikaiEpisodes([]);
@@ -1141,7 +1143,7 @@ export default function Watch() {
         if (cancelled) return;
         if (epsResp.data?.success && Array.isArray(epsResp.data.episodes)) {
           setAnikaiEpisodes(epsResp.data.episodes);
-          console.log("[Anikai] Final Result: %s (%s) episodes=%d", best.title, resolvedSlug, epsResp.data.episodes.length);
+          console.log("[Anikai] Final Result Loaded: %d episodes", epsResp.data.episodes.length);
         } else {
           setAnikaiEpisodes([]);
         }

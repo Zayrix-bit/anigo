@@ -525,6 +525,11 @@ class AnikaiScraper:
                 if label in label_map:
                     info[label_map[label]] = value
 
+        # Extract numeric year for mapping
+        prem = info.get("premiered") or info.get("aired", "")
+        year_match = re.search(r'\d{4}', prem)
+        info["year"] = int(year_match.group(0)) if year_match else None
+
         # Extract Seasons - More Robust Logic
         seasons = []
         # Find the section that contains "Seasons" text
