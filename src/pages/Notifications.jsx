@@ -60,7 +60,7 @@ export default function Notifications() {
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col font-sans">
       <Navbar />
 
-      <div className="max-w-[1000px] mx-auto w-full pt-[80px] px-4 pb-12 flex-1">
+      <div className="w-full pt-[80px] px-4 md:px-8 pb-12 flex-1">
 
         {/* Top Navigation Tabs */}
         <div className="flex bg-[#1a1a1a] mb-6 md:mb-8 border border-white/5 rounded-sm shadow-xl overflow-hidden">

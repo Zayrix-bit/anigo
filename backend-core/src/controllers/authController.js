@@ -109,3 +109,39 @@ exports.getMe = async (req, res, next) => {
   }
 };
 
+// @desc    Update current user profile and/or password
+// @route   PUT /auth/me
+// @access  Private
+exports.updateMe = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      res.status(404);
+      throw new Error('User not found');
+    }
+
+    if (req.body.email) user.email = req.body.email;
+    if (req.body.displayName) user.displayName = req.body.displayName;
+    
+    // Only update password if provided
+    if (req.body.password) {
+      user.password = req.body.password;
+    }
+
+    await user.save(); // Password will be hashed in pre-save hook
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        displayName: user.displayName,
+        avatar: user.avatar
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};

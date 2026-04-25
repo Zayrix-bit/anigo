@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import Navbar from "../components/layout/Navbar";
+import Footer from "../components/layout/Footer";
 import { useAuth } from "../hooks/useAuth";
 import { getWatchlist, removeFromWatchlist } from "../services/watchlistService";
 import { User, Clock, Heart, Bell, Download, Settings, Search, Filter, ArrowDownUp, ChevronDown } from "lucide-react";
@@ -65,7 +66,7 @@ export default function Watchlist() {
     <div className="min-h-screen bg-[#111] text-white flex flex-col font-sans">
       <Navbar />
 
-      <div className="max-w-[1000px] mx-auto w-full pt-[80px] px-4 pb-12 flex-1">
+      <div className="w-full pt-[80px] px-4 md:px-8 pb-12 flex-1">
         
         {/* Top Navigation Tabs */}
         <div className="flex bg-[#1a1a1a] mb-6 md:mb-8 border border-white/5 rounded-sm shadow-xl overflow-hidden">
@@ -96,13 +97,13 @@ export default function Watchlist() {
         </div>
 
         {/* Sub Navigation Tabs */}
-        <div className="flex items-center gap-6 mb-6 px-2 overflow-x-auto no-scrollbar">
+        <div className="grid grid-cols-3 gap-2 md:flex md:flex-row md:items-center md:gap-6 mb-6 px-2">
           {subTabs.map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`text-sm font-medium whitespace-nowrap transition-colors px-4 py-2 rounded-sm ${
-                activeTab === tab ? "bg-[#222] text-white" : "text-white/40 hover:text-white"
+              className={`text-[13px] md:text-sm font-medium transition-colors px-2 py-2.5 md:py-2 rounded-sm w-full md:w-auto text-center ${
+                activeTab === tab ? "bg-[#222] text-white" : "text-white/40 hover:text-white bg-[#1a1a1a] md:bg-transparent"
               }`}
             >
               {tab}
@@ -157,11 +158,11 @@ export default function Watchlist() {
                     <div className="w-full h-full flex items-center justify-center text-[#444] text-xs">No Image</div>
                   )}
                   
-                  {/* Remove Overlay Button */}
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                  {/* Remove Overlay Button - Desktop Only */}
+                  <div className="absolute inset-0 bg-black/60 opacity-0 md:group-hover:opacity-100 transition-opacity duration-200 hidden md:flex items-center justify-center pointer-events-none md:pointer-events-auto">
                     <button
                       onClick={(e) => handleRemove(item.animeId, e)}
-                      className="bg-red-600 hover:bg-red-700 text-white p-3 rounded-full transform scale-75 group-hover:scale-100 transition-all duration-200 shadow-xl"
+                      className="bg-red-600 hover:bg-red-700 text-white p-3 rounded-full transform scale-75 md:group-hover:scale-100 transition-all duration-200 shadow-xl"
                       title="Remove from Watchlist"
                     >
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -169,6 +170,17 @@ export default function Watchlist() {
                       </svg>
                     </button>
                   </div>
+
+                  {/* Mobile Only: Top Right Cross Button */}
+                  <button
+                    onClick={(e) => handleRemove(item.animeId, e)}
+                    className="md:hidden absolute top-2 right-2 bg-black/50 backdrop-blur-sm text-white/80 hover:text-red-500 hover:bg-black/80 p-1.5 rounded-full shadow-lg z-10 transition-colors"
+                    title="Remove from Watchlist"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
                 <h3 className="text-sm font-bold text-[#ccc] group-hover:text-white transition-colors line-clamp-2 leading-tight mt-1">
                   {item.title}
@@ -178,6 +190,7 @@ export default function Watchlist() {
           </div>
         )}
       </div>
+      <Footer />
     </div>
   );
 }

@@ -46,7 +46,7 @@ export default function ContinueWatching() {
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col font-sans">
       <Navbar />
 
-      <div className="max-w-[1000px] mx-auto w-full pt-[80px] px-4 pb-12 flex-1">
+      <div className="w-full pt-[80px] px-4 md:px-8 pb-12 flex-1">
 
         {/* Top Navigation Tabs */}
         <div className="flex bg-[#1a1a1a] mb-6 md:mb-8 border border-white/5 rounded-sm shadow-xl overflow-hidden">
@@ -87,7 +87,7 @@ export default function ContinueWatching() {
 
         {/* Grid */}
         {progressCards.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-x-3 md:gap-x-4 gap-y-7">
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-x-3 md:gap-x-4 gap-y-7">
             {progressCards.map((anime, i) => (
               <div key={`${anime.id}-${i}`} className="relative group/card">
                 <AnimeCard anime={anime} />

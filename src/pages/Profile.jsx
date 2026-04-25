@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import Navbar from "../components/layout/Navbar";
 import { useAuth } from "../hooks/useAuth";
-import { User, Clock, Heart, Bell, Download, Settings, Key } from "lucide-react";
+import { updateMe } from "../services/authService";
+import { User, Clock, Heart, Bell, Download, Settings, Key, CheckCircle } from "lucide-react";
 
 export default function Profile() {
   const { user } = useAuth();
@@ -12,8 +13,13 @@ export default function Profile() {
   const [formData, setFormData] = useState({
     username: user?.username || "",
     email: user?.email || "",
-    displayName: user?.displayName || user?.username || ""
+    displayName: user?.displayName || user?.username || "",
+    password: "",
+    confirmPassword: ""
   });
+  const [showPasswordFields, setShowPasswordFields] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showToast, setShowToast] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -21,11 +27,45 @@ export default function Profile() {
     }
   }, [user, navigate]);
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    // Here we would call the backend to update user profile
-    // e.g. updateProfile(formData)
-    alert("Profile update logic will be implemented in the backend!");
+    
+    if (showPasswordFields) {
+      if (formData.password !== formData.confirmPassword) {
+        alert("Passwords do not match!");
+        return;
+      }
+      if (formData.password.length < 6) {
+        alert("Password must be at least 6 characters.");
+        return;
+      }
+    }
+
+    try {
+      setIsSaving(true);
+      const updatePayload = {
+        email: formData.email,
+        displayName: formData.displayName,
+      };
+
+      if (showPasswordFields && formData.password) {
+        updatePayload.password = formData.password;
+      }
+
+      const res = await updateMe(updatePayload);
+      if (res.success) {
+        setFormData(prev => ({ ...prev, password: "", confirmPassword: "" }));
+        setShowPasswordFields(false);
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 3000);
+        // Note: the AuthContext should ideally be updated here, or the page reloaded
+        // For simplicity, we just notify the user. Next time they visit, it will fetch fresh.
+      }
+    } catch (error) {
+      alert(error?.response?.data?.message || "Failed to update profile");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const navItems = [
@@ -40,10 +80,11 @@ export default function Profile() {
   if (!user) return null;
 
   return (
+    <>
     <div key={user?.id || 'profile'} className="min-h-screen bg-[#111] text-white flex flex-col font-sans">
       <Navbar />
 
-      <div className="max-w-[1000px] mx-auto w-full pt-[80px] px-4 pb-12 flex-1">
+      <div className="w-full pt-[80px] px-4 md:px-8 pb-12 flex-1">
         
         {/* Top Navigation Tabs */}
         <div className="flex bg-[#1a1a1a] mb-6 md:mb-8 border border-white/5 rounded-sm shadow-xl overflow-hidden">
@@ -75,7 +116,7 @@ export default function Profile() {
 
         {/* Profile Content */}
         <div className="flex justify-center mt-6 md:mt-12">
-          <div className="bg-[#1a1a1a] p-6 sm:p-8 md:p-12 rounded-md border border-white/5 w-full max-w-[700px] shadow-2xl flex flex-col md:flex-row-reverse items-center md:items-start md:justify-between gap-8 md:gap-12">
+          <div className="bg-[#1a1a1a] py-6 px-6 sm:px-8 md:py-8 md:px-12 rounded-md border border-white/5 w-full max-w-[800px] shadow-2xl flex flex-col md:flex-row-reverse items-center md:items-start md:justify-center gap-8 md:gap-20">
             
             {/* Avatar Section - Top on mobile, Right on desktop */}
             <div className="flex flex-col items-center gap-3 shrink-0">
@@ -83,23 +124,23 @@ export default function Profile() {
                 {user.avatar ? (
                   <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full bg-red-600 flex items-center justify-center text-3xl md:text-3xl font-black">
+                  <div className="w-full h-full bg-red-600 flex items-center justify-center text-3xl md:text-3xl font-medium">
                     {user.username?.charAt(0).toUpperCase()}
                   </div>
                 )}
               </div>
-              <span className="text-xs text-white/40 font-bold uppercase tracking-wider md:hidden">Your Avatar</span>
+              <span className="text-xs text-white/40 md:hidden">Your Avatar</span>
             </div>
 
             {/* Form Section */}
-            <form onSubmit={handleSave} className="flex flex-col gap-5 md:gap-6 w-full max-w-[450px]">
+            <form onSubmit={handleSave} className="flex flex-col gap-4 md:gap-5 w-full max-w-[500px]">
               
               <div className="flex flex-col gap-1.5">
                 <input
                   type="text"
                   value={formData.username}
                   readOnly // usually username is fixed
-                  className="bg-[#111] text-white/70 px-4 py-3 rounded-sm border border-white/5 outline-none font-medium text-[13px] md:text-sm w-full cursor-not-allowed"
+                  className="bg-[#111] text-white/70 px-4 py-3 rounded-sm border border-white/5 outline-none font-normal text-[13px] md:text-sm w-full cursor-not-allowed"
                 />
                 <span className="text-[10px] md:text-[11px] text-white/40 ml-1">Username.</span>
               </div>
@@ -109,7 +150,7 @@ export default function Profile() {
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="bg-[#111] text-white focus:bg-[#151515] focus:border-red-600/50 px-4 py-3 rounded-sm border border-white/5 outline-none font-medium text-[13px] md:text-sm w-full transition-colors"
+                  className="bg-[#111] text-white focus:bg-[#151515] focus:border-red-600/50 px-4 py-3 rounded-sm border border-white/5 outline-none font-normal text-[13px] md:text-sm w-full transition-colors"
                 />
                 <span className="text-[10px] md:text-[11px] text-white/40 ml-1">Email address.</span>
               </div>
@@ -119,21 +160,49 @@ export default function Profile() {
                   type="text"
                   value={formData.displayName}
                   onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
-                  className="bg-[#111] text-white focus:bg-[#151515] focus:border-red-600/50 px-4 py-3 rounded-sm border border-white/5 outline-none font-medium text-[13px] md:text-sm w-full transition-colors"
+                  className="bg-[#111] text-white focus:bg-[#151515] focus:border-red-600/50 px-4 py-3 rounded-sm border border-white/5 outline-none font-normal text-[13px] md:text-sm w-full transition-colors"
                 />
                 <span className="text-[10px] md:text-[11px] text-white/40 ml-1">Display name.</span>
               </div>
 
-              <button type="button" className="flex items-center justify-center md:justify-start gap-2 text-white/70 hover:text-white transition-colors mt-2">
+              <button 
+                type="button" 
+                onClick={() => setShowPasswordFields(!showPasswordFields)}
+                className="flex items-center justify-center md:justify-start gap-2 text-white/70 hover:text-white transition-colors mt-2 w-fit"
+              >
                 <Key size={14} />
-                <span className="text-xs font-bold tracking-wide">Change Password</span>
+                <span className="text-xs font-normal">Change Password</span>
               </button>
+
+              {showPasswordFields && (
+                <div className="flex flex-col gap-4 mt-2 animate-in fade-in slide-in-from-top-2">
+                  <div className="flex flex-col gap-1.5">
+                    <input
+                      type="password"
+                      placeholder="New password"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      className="bg-[#111] text-white focus:bg-[#151515] focus:border-red-600/50 px-4 py-3 rounded-sm border border-white/5 outline-none font-normal text-[13px] md:text-sm w-full transition-colors"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <input
+                      type="password"
+                      placeholder="Repeat new password"
+                      value={formData.confirmPassword}
+                      onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                      className="bg-[#111] text-white focus:bg-[#151515] focus:border-red-600/50 px-4 py-3 rounded-sm border border-white/5 outline-none font-normal text-[13px] md:text-sm w-full transition-colors"
+                    />
+                  </div>
+                </div>
+              )}
 
               <button
                 type="submit"
-                className="mt-4 w-full bg-red-600 hover:bg-red-700 text-white font-bold tracking-wide text-sm py-3.5 rounded-sm transition-colors shadow-[0_0_15px_rgba(220,38,38,0.2)]"
+                disabled={isSaving}
+                className="mt-4 w-full bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-normal text-sm py-3.5 rounded-sm transition-colors shadow-[0_0_15px_rgba(220,38,38,0.2)]"
               >
-                Save Changes
+                {isSaving ? "Saving..." : "Save Changes"}
               </button>
             </form>
           </div>
@@ -141,5 +210,14 @@ export default function Profile() {
 
       </div>
     </div>
+
+    {/* Success Toast Popup */}
+    {showToast && (
+      <div className="fixed bottom-6 right-6 bg-green-600/90 backdrop-blur-sm text-white px-6 py-4 rounded-md shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-5 z-50">
+        <CheckCircle size={20} className="text-white" />
+        <span className="font-medium text-sm">Profile updated successfully</span>
+      </div>
+    )}
+  </>
   );
 }

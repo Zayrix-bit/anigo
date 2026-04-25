@@ -14,3 +14,8 @@ export const getMe = async () => {
   const { data } = await backendApi.get("/auth/me");
   return data;
 };
+
+export const updateMe = async (profileData) => {
+  const { data } = await backendApi.put("/auth/me", profileData);
+  return data;
+};
