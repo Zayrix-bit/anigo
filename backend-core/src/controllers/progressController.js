@@ -42,7 +42,7 @@ exports.getProgress = async (req, res) => {
   try {
     const progressList = await Progress.find({ user: req.user._id })
       .sort({ updatedAt: -1 })
-      .limit(20);
+      .limit(100);
 
     res.status(200).json({
       success: true,

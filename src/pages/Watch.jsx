@@ -131,6 +131,72 @@ export default function Watch() {
   const [userRating, setUserRating] = useState(() => getSafeStorage(`rating_${id}`, null));
   const [skipTimes, setSkipTimes] = useState(() => getSafeStorage(`skipTimes_${id}`, {}));
 
+  // ── PROGRESS: Save to backend when episode changes (ensures history is ALWAYS tracked) ──
+  const progressSavedForEp = useRef(null);
+  useEffect(() => {
+    if (!user || !anime || !id) return;
+
+    // Only save once per episode visit to avoid spamming
+    const epKey = `${id}-${activeEpisode}`;
+    if (progressSavedForEp.current === epKey) return;
+    progressSavedForEp.current = epKey;
+
+    const coverImg = anime?.coverImage?.large || anime?.coverImage?.extraLarge;
+    const title = anime?.title?.english || anime?.title?.romaji || anime?.title?.native || 'Unknown';
+
+    // Save with currentTime=0 initially — will be updated by player messages
+    updateProgress(String(id), activeEpisode, 0, null, title, coverImg)
+      .then(res => {
+        if (res.success && res.progress) {
+          setGlobalProgress(prev => {
+            const filtered = prev.filter(p => p.animeId !== String(id));
+            return [res.progress, ...filtered].slice(0, 100);
+          });
+        }
+      })
+      .catch(err => console.warn("Initial progress save failed:", err));
+  }, [user, anime, id, activeEpisode, setGlobalProgress]);
+
+  // ── PROGRESS: Save on page leave / tab close ──
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (!user || !anime || !id) return;
+      const coverImg = anime?.coverImage?.large || anime?.coverImage?.extraLarge;
+      const title = anime?.title?.english || anime?.title?.romaji || anime?.title?.native || 'Unknown';
+
+      // Use sendBeacon for reliable save on tab close
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const payload = JSON.stringify({
+        animeId: String(id),
+        episode: activeEpisode,
+        currentTime: 0,
+        duration: null,
+        title,
+        coverImage: coverImg
+      });
+
+      // navigator.sendBeacon doesn't support custom headers, so use fetch with keepalive
+      try {
+        fetch('/progress/save', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: payload,
+          keepalive: true
+        });
+      } catch (e) {
+        // Silently fail — page is closing anyway
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [user, anime, id, activeEpisode]);
+
   // Sync settings to localStorage
   useEffect(() => localStorage.setItem("autoNext", JSON.stringify(autoNext)), [autoNext]);
   useEffect(() => localStorage.setItem("autoPlay", JSON.stringify(autoPlay)), [autoPlay]);
@@ -843,7 +909,7 @@ export default function Watch() {
               if (res.success && res.progress) {
                 setGlobalProgress(prev => {
                   const filtered = prev.filter(p => p.animeId !== String(id));
-                  return [res.progress, ...filtered].slice(0, 20);
+                  return [res.progress, ...filtered].slice(0, 100);
                 });
               }
             })

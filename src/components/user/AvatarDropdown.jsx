@@ -39,15 +39,15 @@ export default function AvatarDropdown() {
             <Link to="/profile" onClick={() => setIsOpen(false)} className="text-left text-white/60 hover:text-white hover:bg-white/[0.03] px-3 py-2 rounded text-xs font-medium transition-colors block">
               Profile
             </Link>
-            <button className="text-left text-white/60 hover:text-white hover:bg-white/[0.03] px-3 py-2 rounded text-xs font-medium transition-colors">
+            <Link to="/watching" onClick={() => setIsOpen(false)} className="text-left text-white/60 hover:text-white hover:bg-white/[0.03] px-3 py-2 rounded text-xs font-medium transition-colors block">
               Continue Watching
-            </button>
+            </Link>
             <Link to="/watchlist" onClick={() => setIsOpen(false)} className="text-left text-white/60 hover:text-white hover:bg-white/[0.03] px-3 py-2 rounded text-xs font-medium transition-colors block">
               Bookmarks
             </Link>
-            <button className="text-left text-white/60 hover:text-white hover:bg-white/[0.03] px-3 py-2 rounded text-xs font-medium transition-colors">
+            <Link to="/settings" onClick={() => setIsOpen(false)} className="text-left text-white/60 hover:text-white hover:bg-white/[0.03] px-3 py-2 rounded text-xs font-medium transition-colors block">
               Settings
-            </button>
+            </Link>
           </div>
 
           <div className="p-1 border-t border-white/5">
