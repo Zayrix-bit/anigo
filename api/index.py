@@ -412,33 +412,46 @@ class AnikaiScraper:
     @cached("anikai:search", ttl=300)
     def search(self, query):
         try:
-            data = http.get_json(
-                f"{self.AJAX}/anime/search",
-                params={"keyword": query},
-                headers=ANIKAI_AJAX_HEADERS,
-                referer=self.BASE,
-            )
-        except Exception:
+            # Using the /browser URL format as suggested by user
+            html = http.get_html(f"{self.BASE}/browser", params={"keyword": query})
+            soup = BeautifulSoup(html, "html.parser")
+            results = []
+            
+            # Anikai /browser results are inside .aitem or .inner containers
+            items = soup.select(".aitem") or soup.select(".inner")
+            
+            for item in items:
+                title_tag = item.select_one(".title") or item.select_one("a.title")
+                if not title_tag:
+                    continue
+                    
+                title = title_tag.get_text(strip=True)
+                
+                # Extract slug from poster link or title link
+                link_tag = item.select_one(".poster") or item.select_one("a.title")
+                if not link_tag:
+                    continue
+                    
+                href = link_tag.get("href", "")
+                slug = href.replace("/watch/", "").strip("/") if "/watch/" in href else href.strip("/")
+
+                # Extract poster
+                poster_img = item.select_one(".poster img") or item.select_one("img")
+                poster = ""
+                if poster_img:
+                    poster = poster_img.get("data-src") or poster_img.get("src") or ""
+
+                if title and slug:
+                    results.append({
+                        "title": title, 
+                        "slug": slug, 
+                        "poster": poster, 
+                        "source": "anikai"
+                    })
+            return results
+        except Exception as e:
+            log.error(f"Anikai Search failed: {e}")
             return []
-
-        html = data.get("result", {}).get("html", "") if data else ""
-        if not html:
-            return []
-
-        soup = BeautifulSoup(html, "html.parser")
-        results = []
-        for item in soup.find_all("a", class_="aitem"):
-            title_tag = item.find("h6", class_="title")
-            title = title_tag.get_text(strip=True) if title_tag else ""
-            href = item.get("href", "")
-            slug = str(href).replace("/watch/", "") if str(href).startswith("/watch/") else str(href)
-
-            poster_img = item.select_one(".poster img")
-            poster = poster_img.get("src", "") if poster_img else ""
-
-            if title and slug:
-                results.append({"title": title, "slug": slug, "poster": poster, "source": "anikai"})
-        return results
 
     def get_info(self, slug):
         try:

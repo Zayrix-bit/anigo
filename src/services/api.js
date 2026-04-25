@@ -121,8 +121,34 @@ export const SEARCH_QUERY = `
 
 export async function searchAnime(query) {
   if (!query) return [];
-  const res = await fetchFromAniList(SEARCH_QUERY, { search: query });
-  return res.media || [];
+  try {
+    const { data } = await axios.get(`${PYTHON_API}/api/anikai/search`, {
+      params: { keyword: query }
+    });
+    
+    if (data.success && Array.isArray(data.results)) {
+      // Transform Anikai results to match AniList structure expected by UI
+      return data.results.map(item => ({
+        id: item.slug, // Use slug as the ID for routing
+        title: {
+          english: item.title,
+          romaji: item.title,
+          native: item.title
+        },
+        coverImage: {
+          large: item.poster,
+          medium: item.poster
+        },
+        episodes: item.episodes || "?",
+        format: item.format || "TV",
+        isAnikai: true
+      }));
+    }
+    return [];
+  } catch (err) {
+    console.error("Anikai search failed:", err);
+    return [];
+  }
 }
 
 export async function getGenres() {
@@ -164,7 +190,44 @@ export const BROWSE_QUERY = `
   }
 `;
 
-export function getBrowseAnime(variables) {
+export async function getBrowseAnime(variables) {
+  // If it's a search query, use Anikai instead of AniList
+  if (variables.search) {
+    try {
+      const { data } = await axios.get(`${PYTHON_API}/api/anikai/search`, {
+        params: { keyword: variables.search }
+      });
+      
+      if (data.success && Array.isArray(data.results)) {
+        return {
+          media: data.results.map(item => ({
+            id: item.slug,
+            title: {
+              english: item.title,
+              romaji: item.title,
+              native: item.title
+            },
+            coverImage: {
+              large: item.poster,
+              medium: item.poster
+            },
+            episodes: item.episodes || "?",
+            format: item.format || "TV",
+            isAnikai: true
+          })),
+          pageInfo: {
+            total: data.results.length,
+            currentPage: 1,
+            lastPage: 1,
+            hasNextPage: false
+          }
+        };
+      }
+    } catch (err) {
+      console.error("Anikai Browse Search failed:", err);
+    }
+  }
+  
   return fetchFromAniList(BROWSE_QUERY, variables);
 }
 
