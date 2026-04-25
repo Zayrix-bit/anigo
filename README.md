@@ -1,6 +1,6 @@
 # 🎌 AniXO - Premium Anime Streaming Platform
 
-AniXO is a high-performance, full-stack anime streaming application built with a modern React frontend and a powerful Python scraping engine. It features seamless integration with AniList, MAL (Jikan), and Kitsu to provide a rich metadata experience and stable streaming.
+AniXO is a high-performance, full-stack anime streaming application. It features a modern React frontend, a powerful Python scraping engine, and a Node.js user backend for managing watchlists and progress.
 
 ---
 
@@ -10,40 +10,30 @@ Below is the complete architectural layout of the project:
 
 ```text
 anixo/
-├── api/                    # 🐍 Python Backend (Vercel Functions)
-│   └── index.py            # Unified API Core (Anikai, Gogoanime, Kitsu Fallback)
+├── api/                    # 🚀 Unified Backend (Vercel Functions)
+│   ├── index.py            # 🐍 Python Scraper (Anikai, Gogoanime)
+│   ├── user.js             # 🟢 Node.js Gateway (Auth, Watchlist)
+│   ├── user-backend/       # 📂 Core Node.js Logic & Models
+│   └── package.json        # 📦 Node.js Backend Dependencies
 ├── src/                    # ⚛️ React (Vite) Frontend
-│   ├── components/         # Reusable UI Components
-│   │   ├── common/         # AnimeCard, SkeletonCard, etc.
-│   │   ├── home/           # Hero, AnimeRow, ThreeColumnSection
-│   │   ├── layout/         # Navbar, Footer
-│   │   └── watch/          # VideoPlayer, EpisodeList
-│   ├── pages/              # Main Application Views
-│   │   ├── Home.jsx        # Landing Page
-│   │   ├── Watch.jsx       # Custom Video Player & Detailed Info
-│   │   └── Browse.jsx      # Advanced Search & Filtering
-│   ├── services/           # Data & API Layer
-│   │   ├── api.js          # AniList GraphQL & Backend Fetchers
-│   │   └── anikaiMapping.js # Metadata Scoring & Resolution
-│   ├── context/            # Global State (Language, User Lists)
-│   └── App.jsx             # Main Router & Provider Setup
-├── public/                 # Static Assets (Images, Icons)
-├── vercel.json             # Deployment & API Routing Config
-├── vite.config.js          # Vite Bundler Configuration
-├── package.json            # Frontend Dependencies & Scripts
-└── requirements.txt        # Python Backend Dependencies
+│   ├── services/api.js     # 📡 Unified API Layer (Domain Agnostic)
+│   ├── pages/              # 🖼️ Application Views (Home, Watch, Browse)
+│   └── ...
+├── vercel.json             # 🌍 Deployment & Routing Config
+├── vite.config.js          # ⚡ Local Development Proxy
+├── package.json            # 📦 Frontend Dependencies
+└── requirements.txt        # 🐍 Python Dependencies
 ```
 
 ---
 
 ## 🌟 Key Features
 
-- 🎬 **Unified Streaming Engine:** Combines multiple scrapers to resolve high-quality `m3u8` links.
-- 🖼️ **Smart Thumbnail Fallback:** Advanced logic that pulls episode stills from **MAL (Jikan)** and **Kitsu** if AniList is missing info.
-- 🎙️ **Language Precision:** Dedicated handling for Sub/Dub/Softsub tracks with strict group resolution.
-- 📱 **Mobile Optimized:** Fully responsive design with Focus Mode for an immersive viewing experience.
-- 📊 **Rich Metadata:** Real-time data from AniList, including character cast, staff, and recommendations.
-- ⚡ **Lightning Fast:** Built on Vite and TanStack Query for near-instant navigation and caching.
+- 🎬 **Unified Streaming Engine:** Combines multiple scrapers to resolve high-quality links.
+- 🔐 **User System:** Full Authentication, Watchlist management, and Progress tracking.
+- 🖼️ **Smart Thumbnail Fallback:** Pulls episode stills from **MAL** and **Kitsu** if AniList is missing info.
+- 📱 **Mobile Optimized:** Fully responsive design with premium UI/UX for all devices.
+- ⚡ **Environment Agnostic:** Works perfectly on `anixo.online` and `localhost` without code changes.
 
 ---
 
@@ -71,16 +61,22 @@ Ensure you have **Node.js 20+** and **Python 3.10+** installed.
 
 ### 2. Frontend Setup
 ```bash
-cd anixo
 npm install
 npm run dev
 ```
 
-### 3. Backend Setup
+### 3. Python Scraper Setup
 ```bash
-cd anixo/api
-pip install -r ../requirements.txt
-python index.py
+# From root
+pip install -r requirements.txt
+python api/index.py
+```
+
+### 4. Node.js Backend Setup
+```bash
+cd api
+npm install
+npm run dev   # Runs on port 5001 to avoid conflict
 ```
 
 ---
