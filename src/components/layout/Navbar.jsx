@@ -316,8 +316,10 @@ export default function Navbar() {
                                   <Link
                                     key={anime.id}
                                     to={`/watch/${anime.id}`}
-                                    onClick={() => {
-                                      closeSearchOverlay();
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      navigate(`/watch/${anime.id}`);
+                                      setIsSearchOpen(false);
                                       setSearchQuery("");
                                       setShowSearchResults(false);
                                     }}
