@@ -315,7 +315,7 @@ export default function Browse() {
   };
 
   return (
-    <div className="min-h-screen bg-[#060606] text-white selection:bg-red-500/30 font-sans">
+    <div className="min-h-screen bg-[#0b0d12] text-white selection:bg-red-500/30 font-sans">
       <Navbar />
 
       <main className="container max-w-[1720px] mx-auto px-2 md:px-4 pt-16 md:pt-20 pb-20">

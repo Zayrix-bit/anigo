@@ -63,7 +63,7 @@ export default function Watchlist() {
   }
 
   return (
-    <div className="min-h-screen bg-[#111] text-white flex flex-col font-sans">
+    <div className="min-h-screen bg-[#0b0d12] text-white flex flex-col font-sans">
       <Navbar />
 
       <div className="w-full pt-[80px] px-4 md:px-8 pb-12 flex-1">

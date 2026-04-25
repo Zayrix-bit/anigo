@@ -34,7 +34,7 @@ export default function Footer() {
   ];
 
   return (
-    <footer className="relative bg-[#080808] pt-10 md:pt-20 pb-8 md:pb-10 mt-10 md:mt-20 lg:mt-32 overflow-hidden border-t border-white/5">
+    <footer className="relative bg-[#0b0d12] pt-10 md:pt-20 pb-8 md:pb-10 mt-10 md:mt-20 lg:mt-32 overflow-hidden border-t border-white/5">
       {/* Top Gradient Line */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-px bg-gradient-to-r from-transparent via-red-600/50 to-transparent" />
 
@@ -49,10 +49,10 @@ export default function Footer() {
 
         {/* SEO About Section */}
         <article className="mb-8 md:mb-14 pb-6 md:pb-10 border-b border-white/5">
-          <h2 className="text-[12px] md:text-[16px] font-medium text-white/60 mb-2 md:mb-4 tracking-wide">
+          <h2 className="text-[12px] md:text-[16px] font-medium text-white/80 mb-2 md:mb-4 tracking-wide">
             AniXO – Watch Free Anime Online in HD
           </h2>
-          <p className="text-[11px] md:text-[13px] text-white/35 leading-[1.7] md:leading-[1.8] max-w-[900px] font-normal">
+          <p className="text-[11px] md:text-[13px] text-white/50 leading-[1.7] md:leading-[1.8] max-w-[900px] font-normal">
             AniXO is a free anime streaming site where you can watch subbed and dubbed anime online in high definition.
             Enjoy the latest episodes of popular anime series like One Piece, Demon Slayer, Jujutsu Kaisen, Attack on Titan,
             My Hero Academia, Naruto Shippuden, Dragon Ball Super, and thousands more — all without ads or interruptions.
@@ -107,7 +107,7 @@ export default function Footer() {
                       "group flex items-center gap-2 text-[12px] font-bold transition-all duration-300 hover:translate-x-1";
                     const colorClass = isActive
                       ? "text-white"
-                      : "text-white/30 hover:text-white";
+                      : "text-white/50 hover:text-white";
 
                     if (isExternal) {
                       return (
@@ -149,7 +149,7 @@ export default function Footer() {
                 <Link
                   key={genre}
                   to={`/browse?genres=${genre}`}
-                  className="text-[10px] font-bold text-white/25 bg-white/[0.03] border border-white/5 px-2.5 md:px-3 py-1 md:py-1.5 rounded-[3px] hover:text-white hover:bg-white/[0.06] hover:border-white/10 transition-all whitespace-nowrap shrink-0 md:shrink"
+                  className="text-[10px] font-bold text-white/40 bg-white/[0.03] border border-white/5 px-2.5 md:px-3 py-1 md:py-1.5 rounded-[3px] hover:text-white hover:bg-white/[0.06] hover:border-white/10 transition-all whitespace-nowrap shrink-0 md:shrink"
                 >
                   {genre}
                 </Link>
@@ -160,7 +160,7 @@ export default function Footer() {
 
         {/* Bottom Bar */}
         <div className="pt-6 md:pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-3 md:gap-6">
-          <div className="flex items-center gap-2 md:gap-4 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-white/20">
+          <div className="flex items-center gap-2 md:gap-4 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-white/40">
             <span>&copy; {currentYear} AniXO</span>
             <div className="w-1 h-1 bg-white/10 rounded-full" />
             <span className="flex items-center gap-1">
@@ -168,7 +168,7 @@ export default function Footer() {
             </span>
           </div>
 
-          <p className="text-[10px] md:text-[12px] text-white/30 text-center md:text-right max-w-lg italic select-none animate-[breath_4s_ease-in-out_infinite]">
+          <p className="text-[10px] md:text-[12px] text-white/40 text-center md:text-right max-w-lg italic select-none animate-[breath_4s_ease-in-out_infinite]">
             Disclaimer: AniXO does not store any files on its server. All contents are provided by non-affiliated third parties.
           </p>
           <style>{`

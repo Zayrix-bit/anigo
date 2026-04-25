@@ -144,7 +144,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white overflow-x-hidden">
+    <div className="min-h-screen bg-[#0b0d12] text-white overflow-x-hidden">
       <Navbar />
       <Hero bgImages={bgImages} />
 
