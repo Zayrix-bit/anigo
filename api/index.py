@@ -46,17 +46,18 @@ log.addHandler(_handler)
 #  HTTP CLIENT — Centralized, replaces all raw requests / AJAX patterns
 # ═══════════════════════════════════════════════════════════════════════════════
 
-class HttpClient:
-    """
-    Centralized HTTP client with auto-retry, timeout, and consistent headers.
-    Replaces all scattered requests.get/post + AJAX header logic.
-    """
+import httpx
+from Crypto.Cipher import AES
+import base64
 
+class HttpClient:
+    """High-performance HTTP client using httpx."""
     DEFAULT_HEADERS = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
         "Accept-Language": "en-US,en;q=0.9",
-        "Cache-Control": "max-age=0",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
         "Sec-Ch-Ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
         "Sec-Ch-Ua-Mobile": "?0",
         "Sec-Ch-Ua-Platform": '"Windows"',
@@ -67,33 +68,27 @@ class HttpClient:
         "Upgrade-Insecure-Requests": "1"
     }
 
-    def __init__(self, retries=5, backoff=2, timeout=15):
+    def __init__(self, timeout=10):
         self.timeout = timeout
-        self.session = cloudscraper.create_scraper(
-            delay=10,
-            browser={
-                'custom': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            }
-        )
-        self.session.headers.update(self.DEFAULT_HEADERS)
-        log.info("HttpClient initialized with Stealth Mode headers")
+        self.client = httpx.Client(http2=True, headers=self.DEFAULT_HEADERS, timeout=timeout, follow_redirects=True)
+        log.info("HttpClient initialized with httpx (HTTP/2 enabled)")
 
     def get(self, url, params=None, headers=None, referer=None, timeout=None):
-        """GET request with optional overrides."""
-        h = {**self.session.headers, **(headers or {})}
-        if referer:
-            h["Referer"] = referer
-        return self.session.get(url, params=params, headers=h, timeout=timeout or self.timeout)
+        h = {**(headers or {})}
+        if referer: h["Referer"] = referer
+        return self.client.get(url, params=params, headers=h, timeout=timeout or self.timeout)
 
     def post(self, url, data=None, json=None, headers=None, referer=None, timeout=None):
-        """POST request with optional overrides."""
-        h = {**self.session.headers, **(headers or {})}
-        if referer:
-            h["Referer"] = referer
-        return self.session.post(url, data=data, json=json, headers=h, timeout=timeout or self.timeout)
+        h = {**(headers or {})}
+        if referer: h["Referer"] = referer
+        return self.client.post(url, data=data, json=json, headers=h, timeout=timeout or self.timeout)
+
+    def get_html(self, url, params=None, **kwargs):
+        resp = self.get(url, params=params, **kwargs)
+        resp.raise_for_status()
+        return resp.text
 
     def get_json(self, url, params=None, **kwargs):
-        """GET and auto-parse JSON response."""
         resp = self.get(url, params=params, **kwargs)
         resp.raise_for_status()
         return resp.json()
@@ -184,54 +179,58 @@ def api_response(fn):
 #  ANIKAI SCRAPER
 # ═══════════════════════════════════════════════════════════════════════════════
 
+from Crypto.Cipher import AES
+import base64
+
 class AnikaiScraper:
-    """Anikai scraper with encryption/decryption pipeline."""
+    """Anikai scraper with local AES encryption/decryption."""
 
     BASE = ANIKAI_BASE
     AJAX = ANIKAI_AJAX
-    ENC_DEC = "https://enc-dec.app/api"
-    TIMEOUT_EXTERNAL = 8  # Reduced timeout for external decryption bridge
+    
+    # Static keys for Anidex/Anikai
+    _K1 = b"47502123928437581001438240213501"
+    _IV = b"1001438240213501"
+
+    def _pad(self, s):
+        return s + (AES.block_size - len(s) % AES.block_size) * chr(AES.block_size - len(s) % AES.block_size)
+
+    def _unpad(self, s):
+        return s[:-ord(s[len(s)-1:])]
 
     def _encrypt(self, text):
         try:
-            url = f"{self.ENC_DEC}/enc-kai"
-            log.info("Anikai: Encrypting via %s...", url)
-            data = http.get_json(url, params={"text": text}, timeout=self.TIMEOUT_EXTERNAL)
-            return data.get("result") if data and data.get("status") == 200 else None
+            log.info(f"Anikai: Encrypting payload locally...")
+            cipher = AES.new(self._K1, AES.MODE_CBC, self._IV)
+            padded = self._pad(text).encode('utf-8')
+            encrypted = cipher.encrypt(padded)
+            return base64.b64encode(encrypted).decode('utf-8')
         except Exception as e:
-            log.warning("Anikai: Encryption failed (check network/ISP): %s", e)
+            log.error(f"Anikai Encryption error: {e}")
+            return None
+
+    def _decrypt(self, data):
+        try:
+            log.info(f"Anikai: Decrypting payload locally...")
+            raw = base64.b64decode(data)
+            cipher = AES.new(self._K1, AES.MODE_CBC, self._IV)
+            decrypted = cipher.decrypt(raw)
+            return self._unpad(decrypted).decode('utf-8')
+        except Exception as e:
+            log.error(f"Anikai Decryption error: {e}")
             return None
 
     def _decrypt_kai(self, text):
-        try:
-            url = f"{self.ENC_DEC}/dec-kai"
-            log.info("Anikai: Decrypting-K via %s...", url)
-            resp = http.post(url, json={"text": text}, timeout=self.TIMEOUT_EXTERNAL)
-            data = resp.json()
-            return data.get("result") if data and data.get("status") == 200 else None
-        except Exception as e:
-            log.warning("Anikai: Decryption-K failed: %s", e)
-            return None
+        return self._decrypt(text)
 
     def _decrypt_mega(self, text):
-        try:
-            url = f"{self.ENC_DEC}/dec-mega"
-            log.info("Anikai: Decrypting-M via %s...", url)
-            resp = http.post(url, json={
-                "text": text,
-                "agent": HttpClient.DEFAULT_HEADERS["User-Agent"],
-            }, timeout=self.TIMEOUT_EXTERNAL)
-            data = resp.json()
-            return data.get("result") if data and data.get("status") == 200 else None
-        except Exception as e:
-            log.warning("Anikai: Decryption-M failed: %s", e)
-            return None
+        return self._decrypt(text)
 
     @cached("anikai:genres", ttl=86400) # Cache for 24 hours
     def get_genres(self):
         try:
             log.info("Anikai: Fetching genres list...")
-            resp = http.get(self.BASE, timeout=self.TIMEOUT_EXTERNAL)
+            resp = http.get(self.BASE, timeout=10)
             soup = BeautifulSoup(resp.text, "html.parser")
             genres = set()
             for a in soup.find_all("a", href=True):

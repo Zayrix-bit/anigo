@@ -2,11 +2,14 @@
 import axios from "axios";
 
 const ANILIST_URL = import.meta.env.VITE_ANILIST_API || "https://graphql.anilist.co";
-const ANIXO_SERVER = import.meta.env.VITE_NODE_API || "";
-const PYTHON_API = import.meta.env.VITE_PYTHON_API || "";
+
+// Use relative paths in production to avoid localhost issues
+const isProd = import.meta.env.PROD;
+const ANIXO_SERVER = import.meta.env.VITE_NODE_API || (isProd ? "" : "http://localhost:5001");
+const PYTHON_API = import.meta.env.VITE_PYTHON_API || (isProd ? "" : "http://localhost:5000");
 
 export const backendApi = axios.create({
-  baseURL: import.meta.env.VITE_AUTH_API || "",
+  baseURL: import.meta.env.VITE_AUTH_API || (isProd ? "" : "http://localhost:5001"),
 });
 
 backendApi.interceptors.request.use((config) => {

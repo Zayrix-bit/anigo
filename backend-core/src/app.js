@@ -23,14 +23,14 @@ app.use(express.json());
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: 5000, // Increased for performance
   message: { success: false, message: 'Too many requests from this IP, please try again after 15 minutes' }
 });
 app.use('/api', limiter); // Apply to API routes (if routes start with /api)
 // Since current routes don't use /api prefix, let's apply a general limiter, or specifically to auth
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20, // Strict limit for auth routes
+  max: 5000, // Increased for development/testing
   message: { success: false, message: 'Too many login attempts, please try again later' }
 });
 
