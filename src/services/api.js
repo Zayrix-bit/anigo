@@ -2,8 +2,8 @@
 import axios from "axios";
 
 const ANILIST_URL = import.meta.env.VITE_ANILIST_API || "https://graphql.anilist.co";
-const ANIXO_SERVER = import.meta.env.PROD ? "" : (import.meta.env.VITE_ANIXO_SERVER || "http://127.0.0.1:5000");
-const PYTHON_API = import.meta.env.PROD ? "" : "http://127.0.0.1:5000";
+const ANIXO_SERVER = "";
+const PYTHON_API = "";
 
 export const backendApi = axios.create({
   baseURL: import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:5001",

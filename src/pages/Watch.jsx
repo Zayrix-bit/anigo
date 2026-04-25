@@ -193,7 +193,7 @@ export default function Watch() {
   }, [activeEpisode]);
 
   // API Endpoints
-  const PYTHON_API = import.meta.env.PROD ? "" : "http://localhost:5000";
+  const PYTHON_API = "";
   const [streamUrl, setStreamUrl] = useState("");
   const [streamData, setStreamData] = useState(null);
   const [streamLoading, setStreamLoading] = useState(false);
