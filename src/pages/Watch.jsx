@@ -132,6 +132,7 @@ export default function Watch() {
   const [skipTimes, setSkipTimes] = useState(() => getSafeStorage(`skipTimes_${id}`, {}));
 
   // ── PROGRESS: Save to backend when episode changes (ensures history is ALWAYS tracked) ──
+  // 5-second delay to avoid junk entries from accidental clicks
   const progressSavedForEp = useRef(null);
   useEffect(() => {
     if (!user || !anime || !id) return;
@@ -139,22 +140,26 @@ export default function Watch() {
     // Only save once per episode visit to avoid spamming
     const epKey = `${id}-${activeEpisode}`;
     if (progressSavedForEp.current === epKey) return;
-    progressSavedForEp.current = epKey;
 
-    const coverImg = anime?.coverImage?.large || anime?.coverImage?.extraLarge;
-    const title = anime?.title?.english || anime?.title?.romaji || anime?.title?.native || 'Unknown';
+    const timer = setTimeout(() => {
+      progressSavedForEp.current = epKey;
 
-    // Save with currentTime=0 initially — will be updated by player messages
-    updateProgress(String(id), activeEpisode, 0, null, title, coverImg)
-      .then(res => {
-        if (res.success && res.progress) {
-          setGlobalProgress(prev => {
-            const filtered = prev.filter(p => p.animeId !== String(id));
-            return [res.progress, ...filtered].slice(0, 100);
-          });
-        }
-      })
-      .catch(err => console.warn("Initial progress save failed:", err));
+      const coverImg = anime?.coverImage?.large || anime?.coverImage?.extraLarge;
+      const title = anime?.title?.english || anime?.title?.romaji || anime?.title?.native || 'Unknown';
+
+      updateProgress(String(id), activeEpisode, 0, null, title, coverImg)
+        .then(res => {
+          if (res.success && res.progress) {
+            setGlobalProgress(prev => {
+              const filtered = prev.filter(p => p.animeId !== String(id));
+              return [res.progress, ...filtered].slice(0, 100);
+            });
+          }
+        })
+        .catch(err => console.warn("Initial progress save failed:", err));
+    }, 5000); // 5 second delay
+
+    return () => clearTimeout(timer);
   }, [user, anime, id, activeEpisode, setGlobalProgress]);
 
   // ── PROGRESS: Save on page leave / tab close ──
@@ -188,7 +193,7 @@ export default function Watch() {
           body: payload,
           keepalive: true
         });
-      } catch (e) {
+      } catch {
         // Silently fail — page is closing anyway
       }
     };
