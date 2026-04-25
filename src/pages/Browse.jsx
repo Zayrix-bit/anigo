@@ -297,10 +297,14 @@ export default function Browse() {
     });
   };
 
+  const [isResetting, setIsResetting] = useState(false);
+
   const handleReset = () => {
+    setIsResetting(true);
     setSearchParams(new URLSearchParams());
     setSearchInput("");
     setOpenDropdown(null);
+    setTimeout(() => setIsResetting(false), 600);
   };
 
   const handleShuffleSort = () => {
@@ -322,6 +326,13 @@ export default function Browse() {
             <div className="w-1 h-5 bg-red-600 rounded-full shrink-0" />
             <h2 className="text-2xl font-normal tracking-tighter">Browse</h2>
           </div>
+          <button 
+            onClick={handleReset}
+            className="text-[11px] uppercase tracking-[0.2em] font-bold text-white/50 hover:text-red-500 transition-all flex items-center gap-2 group"
+          >
+            <RefreshCw size={12} className={`transition-transform duration-500 ${isResetting ? 'rotate-[360deg]' : ''}`} />
+            ( Reset )
+          </button>
         </div>
 
         {/* Filters Interface */}
@@ -329,13 +340,13 @@ export default function Browse() {
           <div className="hidden md:flex flex-col gap-6">
             <div className="flex h-[52px] bg-[#0d0d0d] border border-white/10 rounded-xl overflow-visible shadow-2xl relative">
               <div className="flex-[2.5] relative flex items-center border-r border-white/5">
-                <Search className="absolute left-6 w-4 h-4 text-white/20" />
+                <Search className="absolute left-6 w-4 h-4 text-white/40" />
                 <input
                   type="text"
                   placeholder="Universal Search..."
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
-                  className="w-full h-full bg-transparent pl-14 pr-12 text-[14px] text-white font-medium placeholder-white/10 outline-none"
+                  className="w-full h-full bg-transparent pl-14 pr-12 text-[14px] text-white font-medium placeholder-white/30 outline-none"
                 />
                 {searchInput && (
                   <button onClick={() => setSearchInput("")} className="absolute right-4 w-6 h-6 flex items-center justify-center hover:bg-white/5 rounded-full transition-colors">
