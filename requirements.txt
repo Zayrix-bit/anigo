@@ -3,3 +3,5 @@ flask-cors
 requests
 beautifulsoup4
 cloudscraper
+httpx
+h2

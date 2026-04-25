@@ -96,7 +96,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem("cached_user", JSON.stringify(userData));
     setUser(userData);
     triggerAuthToast("You have signed in successfully");
-    
+
     // Fetch data immediately after manual login (each in its own try-catch)
     try {
       const wlRes = await getWatchlist();

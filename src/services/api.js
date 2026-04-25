@@ -21,10 +21,10 @@ async function fetchFromAniList(query, variables = {}) {
   try {
     // Clean up variables to remove null/undefined/empty-string values
     const cleanVariables = Object.fromEntries(
-      Object.entries(variables).filter(([, v]) => 
-        v !== null && 
-        v !== undefined && 
-        v !== "" && 
+      Object.entries(variables).filter(([, v]) =>
+        v !== null &&
+        v !== undefined &&
+        v !== "" &&
         (Array.isArray(v) ? v.length > 0 : true)
       )
     );
@@ -125,7 +125,7 @@ export async function searchAnime(query) {
     const { data } = await axios.get(`${PYTHON_API}/api/anikai/search`, {
       params: { keyword: query }
     });
-    
+
     if (data.success && Array.isArray(data.results)) {
       // Transform Anikai results to match AniList structure expected by UI
       return data.results.map(item => ({
@@ -197,7 +197,7 @@ export async function getBrowseAnime(variables) {
       const { data } = await axios.get(`${PYTHON_API}/api/anikai/search`, {
         params: { keyword: variables.search }
       });
-      
+
       if (data.success && Array.isArray(data.results)) {
         return {
           media: data.results.map(item => ({
@@ -227,7 +227,7 @@ export async function getBrowseAnime(variables) {
       console.error("Anikai Browse Search failed:", err);
     }
   }
-  
+
   return fetchFromAniList(BROWSE_QUERY, variables);
 }
 
@@ -649,7 +649,7 @@ export async function getBrowseAnimeMAL(variables) {
 
 export async function getBrowseAnimeAnikai({ page = 1, sort = "TRENDING_DESC", genres = [], format_in = [], status, seasonYear, season, country, language } = {}) {
   if (!genres.length) return { media: [], pageInfo: {} };
-  
+
   // We only fetch by the first genre for Anikai since it only supports single genre filtering via its ID easily
   const { ANIKAI_GENRE_MAP } = await import('../constants/genres');
   const genreId = ANIKAI_GENRE_MAP[genres[0]];
@@ -658,7 +658,7 @@ export async function getBrowseAnimeAnikai({ page = 1, sort = "TRENDING_DESC", g
   // Map AniList sort strings to Anikai sort parameter
   let anikaiSort = "updated_date";
   const currentSort = sort[0] || "";
-  
+
   if (currentSort.includes("POPULARITY")) anikaiSort = "most_followed";
   else if (currentSort.includes("SCORE")) anikaiSort = "score";
   else if (currentSort.includes("START_DATE")) anikaiSort = "release_date";
@@ -682,12 +682,12 @@ export async function getBrowseAnimeAnikai({ page = 1, sort = "TRENDING_DESC", g
     const { data } = await axios.get(`${PYTHON_API}/api/anikai/browse/${genreId}`, {
       params: apiParams
     });
-    
+
     // Inject the requested genre so that frontend client-side filtering doesn't strip the results
     if (data && data.media) {
       data.media = data.media.map(item => ({ ...item, genres: [genres[0]] }));
     }
-    
+
     return data;
   } catch (err) {
     console.error("Anikai Browse API Error:", err);

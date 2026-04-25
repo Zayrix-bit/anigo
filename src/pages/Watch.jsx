@@ -592,6 +592,8 @@ export default function Watch() {
   const [episodeLayout, setEpisodeLayout] = useState("list"); // "grid" | "list" | "detailed"
   const [playerLang, setPlayerLang] = useState("sub");
   const [activeServer, setActiveServer] = useState(1);
+  const [fakeLoading, setFakeLoading] = useState(true);
+  const [loadingMessage, setLoadingMessage] = useState("Initializing secure stream...");
 
   // Watchlist integration
   const { user, setGlobalWatchlist, setGlobalProgress, globalSettings } = useAuth();
@@ -746,6 +748,34 @@ export default function Watch() {
       setIframeLoaded(true);
     }
   }, [streamUrl]);
+
+  // ── FAKE LOADING LOGIC ──
+  useEffect(() => {
+    setFakeLoading(true);
+    const messages = [
+      "Connecting to high-speed nodes...",
+      "Optimizing video buffer...",
+      "Bypassing geo-restrictions...",
+      "Establishing secure tunnel...",
+      "Preparing your stream..."
+    ];
+    
+    let msgIndex = 0;
+    const msgInterval = setInterval(() => {
+      msgIndex++;
+      if (messages[msgIndex]) setLoadingMessage(messages[msgIndex]);
+    }, 700);
+
+    const timer = setTimeout(() => {
+      setFakeLoading(false);
+      clearInterval(msgInterval);
+    }, 3500); // 3.5 seconds of fake loading time
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(msgInterval);
+    };
+  }, [activeEpisode, id]); // Trigger on episode or anime change
 
   const { data: anime, isLoading } = useQuery({
     queryKey: ["animeDetails", id, isMal],
@@ -1736,12 +1766,23 @@ export default function Watch() {
                   {/* Content Container */}
                   <div className="relative z-10 w-full h-full flex flex-col items-center justify-center p-8 text-center">
                     {/* LOADER STATE */}
-                    {(streamLoading || (streamUrl && !iframeLoaded)) ? (
-                      <div className="flex flex-col items-center gap-4 transition-all duration-300">
-                        <div className="w-10 h-10 border-[3px] border-red-600 border-t-transparent rounded-full animate-spin shadow-[0_0_20px_rgba(220,38,38,0.3)]"></div>
-                        <p className="text-white/20 text-[8px] font-bold uppercase tracking-[0.3em] animate-pulse">
-                          Loading...
-                        </p>
+                    {(fakeLoading || streamLoading || (streamUrl && !iframeLoaded)) ? (
+                      <div className="flex flex-col items-center gap-6 transition-all duration-300">
+                        {/* Premium Spinner */}
+                        <div className="relative">
+                          <div className="w-14 h-14 border-[2px] border-white/5 rounded-full"></div>
+                          <div className="absolute top-0 left-0 w-14 h-14 border-[2px] border-red-600 border-t-transparent rounded-full animate-spin shadow-[0_0_30px_rgba(220,38,38,0.4)]"></div>
+                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-red-600 rounded-full animate-pulse"></div>
+                        </div>
+                        
+                        <div className="flex flex-col items-center gap-2">
+                          <p className="text-white font-medium text-[11px] lg:text-[13px] tracking-wide animate-in fade-in slide-in-from-bottom-2 duration-500">
+                            {loadingMessage}
+                          </p>
+                          <p className="text-white/20 text-[8px] lg:text-[9px] font-bold uppercase tracking-[0.3em] animate-pulse">
+                            Please wait a moment
+                          </p>
+                        </div>
                       </div>
                     ) : (
                       /* ERROR / NO STREAM STATE */
