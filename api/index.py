@@ -525,6 +525,62 @@ class AnikaiScraper:
                 if label in label_map:
                     info[label_map[label]] = value
 
+        # Extract Seasons - More Robust Logic
+        seasons = []
+        # Find the section that contains "Seasons" text
+        seasons_title = soup.find(["h2", "h3", "div"], string=re.compile(r"Seasons", re.I))
+        seasons_section = None
+        
+        if seasons_title:
+            # The seasons list is usually the next sibling or a parent's child
+            seasons_section = seasons_title.find_next("div", class_=re.compile(r"list|block|items")) or seasons_title.parent
+        
+        # Fallback to known selectors
+        if not seasons_section or not seasons_section.select("a"):
+            seasons_section = soup.select_one(".os-list") or soup.select_one(".ss-list") or soup.select_one(".seasons-block") or soup.select_one("#seasons")
+
+        if seasons_section:
+            for item in seasons_section.select("a"):
+                if "/watch/" not in item.get("href", ""): continue
+                
+                s_title = item.get_text(strip=True)
+                # Clean title if it contains episode count
+                s_title = re.sub(r'\d+\s*EPS.*', '', s_title).strip()
+                
+                s_href = item.get("href", "")
+                s_slug = s_href.replace("/watch/", "").strip("/")
+                
+                # Check for episode count badge
+                ep_badge = item.select_one(".ep-status, .tick-item, .tick-eps, .episode-count")
+                s_episodes = ep_badge.get_text(strip=True) if ep_badge else ""
+                
+                # Extract poster
+                s_poster_img = item.select_one("img")
+                s_poster = ""
+                if s_poster_img:
+                    s_poster = s_poster_img.get("data-src") or s_poster_img.get("src") or ""
+                
+                if s_title and s_slug:
+                    # Very Strict Filter: Must contain a core part of the main title
+                    main_title = info["title"].lower()
+                    # Remove "Re:" prefix for better matching if needed, or just use core words
+                    core_name = re.sub(r'season.*|part.*|s\d+.*', '', main_title).strip()
+                    
+                    # Split core name into meaningful words (length > 2)
+                    core_keywords = [w for w in re.findall(r'\w+', core_name) if len(w) > 2]
+                    
+                    is_relevant = any(word in s_title.lower() for word in core_keywords)
+                    
+                    if is_relevant:
+                        seasons.append({
+                            "title": s_title,
+                            "slug": s_slug,
+                            "episodes": s_episodes,
+                            "poster": s_poster,
+                            "isActive": s_slug == slug or s_slug in slug or slug in s_slug
+                        })
+        
+        info["seasons"] = seasons
         return info
 
     def get_episodes(self, ani_id):

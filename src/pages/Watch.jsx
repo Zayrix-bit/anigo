@@ -1145,15 +1145,36 @@ export default function Watch() {
     if (!anime) return;
 
     setStableSeasons(prev => {
-      const isAlreadyInList = prev.some(s => s.id === anime.id);
+      const isAlreadyInList = prev.some(s => s.id === anime.id || s.slug === anime.slug);
 
       if (isAlreadyInList) {
         return prev.map(s => ({
           ...s,
-          isActive: s.id === anime.id
+          isActive: (s.id === anime.id || s.slug === (anikaiDetails?.slug || anime.slug))
         }));
       }
 
+      // Priority: Anikai Seasons (more accurate for the scraper)
+      if (anikaiDetails?.seasons && anikaiDetails.seasons.length > 0) {
+        return anikaiDetails.seasons.map(s => ({
+          id: s.slug,
+          slug: s.slug,
+          title: {
+            english: s.title,
+            romaji: s.title
+          },
+          coverImage: {
+            large: s.poster || anime.coverImage?.large,
+            medium: s.poster || anime.coverImage?.medium
+          },
+          episodes: parseInt(s.episodes) || 0,
+          format: "TV",
+          isActive: s.isActive,
+          relationToMain: s.isActive ? 'CURRENT' : 'ALTERNATIVE'
+        }));
+      }
+
+      // Fallback: AniList Relations
       const items = [{
         ...anime,
         isActive: true,
@@ -1207,7 +1228,7 @@ export default function Watch() {
 
       return uniqueItems;
     });
-  }, [anime]);
+  }, [anime, anikaiDetails]);
 
   const getSeasonLabel = (item) => {
     if (!item) return "Current";
