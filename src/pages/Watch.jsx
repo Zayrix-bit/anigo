@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import { useParams, Link, useLocation } from "react-router-dom";
+import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { getAnimeDetails, getEpisodeTitles, getJikanAnimeDetails, getAnikaiDetails, getSecondaryEpisodeMeta, getMalSyncMapping } from "../services/api";
@@ -577,6 +577,7 @@ function CustomCommentSection({ animeId, episode, animeTitle, relations = [], re
 
 export default function Watch() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const isMal = queryParams.get("mal") === "true";
@@ -752,6 +753,19 @@ export default function Watch() {
     enabled: !!id,
     staleTime: 0,
   });
+
+  // URL Cleanup: If we arrived via a slug, redirect to the AniList ID once loaded
+  useEffect(() => {
+    if (anime && anime.id && isNaN(id) && !isMal) {
+      console.log(`[Watch] Cleaning up URL: ${id} -> ${anime.id}`);
+      const params = new URLSearchParams(location.search);
+      // Ensure we keep existing query params like ep and t
+      navigate({
+        pathname: `/watch/${anime.id}`,
+        search: params.toString()
+      }, { replace: true });
+    }
+  }, [anime, id, isMal, navigate, location.search]);
 
   // ── PROGRESS: Save to backend when episode changes (ensures history is ALWAYS tracked) ──
   // 5-second delay to avoid junk entries from accidental clicks
