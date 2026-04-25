@@ -1268,35 +1268,188 @@ def api_anilist_proxy():
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+#  COMMENT SYSTEM API
+# ═══════════════════════════════════════════════════════════════════════════════
+
+COMMENTS_FILE = os.path.join(os.path.dirname(__file__), "comments.json")
+
+def load_comments():
+    if not os.path.exists(COMMENTS_FILE):
+        return {}
+    try:
+        with open(COMMENTS_FILE, "r", encoding="utf-8") as f:
+            return _json.load(f)
+    except:
+        return {}
+
+def save_comments(comments):
+    with open(COMMENTS_FILE, "w", encoding="utf-8") as f:
+        _json.dump(comments, f, indent=4)
+
+@app.route("/api/comments", methods=["GET"])
+def get_comments():
+    anime_id = request.args.get("animeId")
+    episode = request.args.get("episode")
+    
+    if not anime_id or not episode:
+        return jsonify({"error": "Missing params"}), 400
+        
+    all_comments = load_comments()
+    key = f"{anime_id}-{episode}"
+    return jsonify(all_comments.get(key, []))
+
+@app.route("/api/comments", methods=["POST"])
+def post_comment():
+    try:
+        data = request.get_json()
+        anime_id = data.get("animeId")
+        episode = data.get("episode")
+        user = data.get("user", "Anonymous")
+        avatar = data.get("avatar", "/avatar_placeholder.png")
+        content = data.get("content")
+        
+        if not anime_id or not episode or not content:
+            return jsonify({"error": "Invalid data"}), 400
+            
+        all_comments = load_comments()
+        key = f"{anime_id}-{episode}"
+        
+        if key not in all_comments:
+            all_comments[key] = []
+            
+        import datetime
+        new_comment = {
+            "id": len(all_comments[key]) + 1,
+            "user": user,
+            "avatar": avatar,
+            "content": content,
+            "time": datetime.datetime.now().isoformat(),
+            "likes": 0,
+            "replies": 0
+        }
+        
+        all_comments[key].insert(0, new_comment) # Newest first
+        save_comments(all_comments)
+        
+        return jsonify(new_comment)
+    except Exception as e:
+        log.error(f"Comment API Error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/comments/vote", methods=["POST"])
+def vote_comment():
+    try:
+        data = request.get_json()
+        anime_id = data.get("animeId")
+        episode = data.get("episode")
+        comment_id = int(data.get("commentId"))
+        action = data.get("action") # 'like' or 'dislike'
+        username = data.get("username")
+        
+        if not anime_id or not episode or not comment_id or not username:
+            return jsonify({"error": "Missing data"}), 400
+            
+        all_comments = load_comments()
+        key = f"{anime_id}-{episode}"
+        
+        if key not in all_comments:
+            return jsonify({"error": "Comment not found"}), 404
+            
+        for c in all_comments[key]:
+            if c["id"] == comment_id:
+                # Initialize lists if they don't exist
+                if "likedBy" not in c: c["likedBy"] = []
+                if "dislikedBy" not in c: c["dislikedBy"] = []
+                
+                if action == "like":
+                    if username in c["likedBy"]:
+                        c["likedBy"].remove(username)
+                    else:
+                        if username in c["dislikedBy"]: c["dislikedBy"].remove(username)
+                        c["likedBy"].append(username)
+                elif action == "dislike":
+                    if username in c["dislikedBy"]:
+                        c["dislikedBy"].remove(username)
+                    else:
+                        if username in c["likedBy"]: c["likedBy"].remove(username)
+                        c["dislikedBy"].append(username)
+                
+                # Update counts
+                c["likes"] = len(c["likedBy"])
+                c["dislikes"] = len(c["dislikedBy"])
+                break
+                
+        save_comments(all_comments)
+        return jsonify({"success": True, "likes": c["likes"], "dislikes": c["dislikes"]})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/comments/delete", methods=["POST"])
+def delete_comment():
+    try:
+        data = request.get_json()
+        anime_id = data.get("animeId")
+        episode = data.get("episode")
+        comment_id = int(data.get("commentId"))
+        username = data.get("username")
+        
+        all_comments = load_comments()
+        key = f"{anime_id}-{episode}"
+        
+        if key in all_comments:
+            for c in all_comments[key]:
+                if c["id"] == comment_id and c["user"] == username:
+                    c["isDeleted"] = True
+                    break
+            save_comments(all_comments)
+            return jsonify({"success": True})
+        return jsonify({"error": "Not found"}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/comments/edit", methods=["POST"])
+def edit_comment():
+    try:
+        data = request.get_json()
+        anime_id = data.get("animeId")
+        episode = data.get("episode")
+        comment_id = int(data.get("commentId"))
+        username = data.get("username")
+        new_content = data.get("content")
+        
+        all_comments = load_comments()
+        key = f"{anime_id}-{episode}"
+        
+        if key in all_comments:
+            for c in all_comments[key]:
+                if c["id"] == comment_id and c["user"] == username:
+                    c["content"] = new_content
+                    break
+            save_comments(all_comments)
+            return jsonify({"success": True})
+        return jsonify({"error": "Not found"}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 #  STARTUP
 # ═══════════════════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
     banner = """
     █████╗ ███╗   ██╗██╗ ██████╗  ██████╗ 
-   ██╔══██╗████╗  ██║██║██╔════╝ ██╔═══██╗
-   ███████║██╔██╗ ██║██║██║  ███╗██║   ██║
-   ██╔══██║██║╚██╗██║██║██║   ██║██║   ██║
-   ██║  ██║██║ ╚████║██║╚██████╔╝╚██████╔╝
-   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝ ╚═════╝  ╚═════╝ 
-              [ API v3.0 — UNIFIED CORE ]
+    ██╔══██╗████╗  ██║██║██╔════╝ ██╔═══██╗
+    ███████║██╔██╗ ██║██║██║  ███╗██║   ██║
+    ██╔══██║██║╚██╗██║██║██║   ██║██║   ██║
+    ██║  ██║██║ ╚████║██║╚██████╔╝╚██████╔╝
+    ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝ ╚═════╝  ╚═════╝ 
+               [ API v3.0 — UNIFIED CORE ]
     """
     log.info(banner)
     log.info("HttpClient ready — 2 engines loaded")
     log.info("Engines: Anikai · Gogoanime")
     log.info("Server starting on port 5000...")
     app.run(debug=True, host="0.0.0.0", port=5000)
-
-# trigger reload
-
-# restart
-
-# clear cache
-
-# update episode counts
-
-# clear cache for episodes
-
-# clear cache for format types
-
-# clear cache for dub extraction
