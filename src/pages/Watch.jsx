@@ -131,77 +131,6 @@ export default function Watch() {
   const [userRating, setUserRating] = useState(() => getSafeStorage(`rating_${id}`, null));
   const [skipTimes, setSkipTimes] = useState(() => getSafeStorage(`skipTimes_${id}`, {}));
 
-  // ── PROGRESS: Save to backend when episode changes (ensures history is ALWAYS tracked) ──
-  // 5-second delay to avoid junk entries from accidental clicks
-  const progressSavedForEp = useRef(null);
-  useEffect(() => {
-    if (!user || !anime || !id) return;
-
-    // Only save once per episode visit to avoid spamming
-    const epKey = `${id}-${activeEpisode}`;
-    if (progressSavedForEp.current === epKey) return;
-
-    const timer = setTimeout(() => {
-      progressSavedForEp.current = epKey;
-
-      const coverImg = anime?.coverImage?.large || anime?.coverImage?.extraLarge;
-      const title = anime?.title?.english || anime?.title?.romaji || anime?.title?.native || 'Unknown';
-
-      updateProgress(String(id), activeEpisode, 0, null, title, coverImg)
-        .then(res => {
-          if (res.success && res.progress) {
-            setGlobalProgress(prev => {
-              const filtered = prev.filter(p => p.animeId !== String(id));
-              return [res.progress, ...filtered].slice(0, 100);
-            });
-          }
-        })
-        .catch(err => console.warn("Initial progress save failed:", err));
-    }, 5000); // 5 second delay
-
-    return () => clearTimeout(timer);
-  }, [user, anime, id, activeEpisode, setGlobalProgress]);
-
-  // ── PROGRESS: Save on page leave / tab close ──
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (!user || !anime || !id) return;
-      const coverImg = anime?.coverImage?.large || anime?.coverImage?.extraLarge;
-      const title = anime?.title?.english || anime?.title?.romaji || anime?.title?.native || 'Unknown';
-
-      // Use sendBeacon for reliable save on tab close
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      const payload = JSON.stringify({
-        animeId: String(id),
-        episode: activeEpisode,
-        currentTime: 0,
-        duration: null,
-        title,
-        coverImage: coverImg
-      });
-
-      // navigator.sendBeacon doesn't support custom headers, so use fetch with keepalive
-      try {
-        fetch('/progress/save', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: payload,
-          keepalive: true
-        });
-      } catch {
-        // Silently fail — page is closing anyway
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [user, anime, id, activeEpisode]);
-
   // Sync settings to localStorage
   useEffect(() => localStorage.setItem("autoNext", JSON.stringify(autoNext)), [autoNext]);
   useEffect(() => localStorage.setItem("autoPlay", JSON.stringify(autoPlay)), [autoPlay]);
@@ -300,6 +229,75 @@ export default function Watch() {
     enabled: !!id,
     staleTime: 0,
   });
+
+  // ── PROGRESS: Save to backend when episode changes (ensures history is ALWAYS tracked) ──
+  // 5-second delay to avoid junk entries from accidental clicks
+  const progressSavedForEp = useRef(null);
+  useEffect(() => {
+    if (!user || !anime || !id) return;
+
+    // Only save once per episode visit to avoid spamming
+    const epKey = `${id}-${activeEpisode}`;
+    if (progressSavedForEp.current === epKey) return;
+
+    const timer = setTimeout(() => {
+      progressSavedForEp.current = epKey;
+
+      const coverImg = anime?.coverImage?.large || anime?.coverImage?.extraLarge;
+      const title = anime?.title?.english || anime?.title?.romaji || anime?.title?.native || 'Unknown';
+
+      updateProgress(String(id), activeEpisode, 0, null, title, coverImg)
+        .then(res => {
+          if (res.success && res.progress) {
+            setGlobalProgress(prev => {
+              const filtered = prev.filter(p => p.animeId !== String(id));
+              return [res.progress, ...filtered].slice(0, 100);
+            });
+          }
+        })
+        .catch(err => console.warn("Initial progress save failed:", err));
+    }, 5000); // 5 second delay
+
+    return () => clearTimeout(timer);
+  }, [user, anime, id, activeEpisode, setGlobalProgress]);
+
+  // ── PROGRESS: Save on page leave / tab close ──
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (!user || !anime || !id) return;
+      const coverImg = anime?.coverImage?.large || anime?.coverImage?.extraLarge;
+      const title = anime?.title?.english || anime?.title?.romaji || anime?.title?.native || 'Unknown';
+
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const payload = JSON.stringify({
+        animeId: String(id),
+        episode: activeEpisode,
+        currentTime: 0,
+        duration: null,
+        title,
+        coverImage: coverImg
+      });
+
+      try {
+        fetch('/progress/save', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: payload,
+          keepalive: true
+        });
+      } catch {
+        // Silently fail — page is closing anyway
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [user, anime, id, activeEpisode]);
 
   const RECS_PER_PAGE = 12;
   const [recPageIndex, setRecPageIndex] = useState(0);
