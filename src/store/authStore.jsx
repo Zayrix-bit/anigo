@@ -19,6 +19,12 @@ export const AuthProvider = ({ children }) => {
   const [globalSettings, setGlobalSettings] = useState(null);
   const [globalNotifications, setGlobalNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [authToast, setAuthToast] = useState(null);
+
+  const triggerAuthToast = (msg) => {
+    setAuthToast(msg);
+    setTimeout(() => setAuthToast(null), 4000);
+  };
 
   useEffect(() => {
     const initAuth = async () => {
@@ -89,6 +95,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem("token", token);
     localStorage.setItem("cached_user", JSON.stringify(userData));
     setUser(userData);
+    triggerAuthToast("You have signed in successfully");
     
     // Fetch data immediately after manual login (each in its own try-catch)
     try {
@@ -123,7 +130,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loginAuth, logoutAuth, loading, globalWatchlist, setGlobalWatchlist, globalProgress, setGlobalProgress, globalSettings, setGlobalSettings, globalNotifications, setGlobalNotifications }}>
+    <AuthContext.Provider value={{ user, loginAuth, logoutAuth, loading, globalWatchlist, setGlobalWatchlist, globalProgress, setGlobalProgress, globalSettings, setGlobalSettings, globalNotifications, setGlobalNotifications, authToast, triggerAuthToast }}>
       {children}
     </AuthContext.Provider>
   );

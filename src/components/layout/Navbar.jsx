@@ -5,7 +5,7 @@ import NavSidebar from "./NavSidebar";
 import { useLanguage } from "../../context/LanguageContext";
 import { useQuery } from "@tanstack/react-query";
 import { searchAnime, getAnikaiGenres } from "../../services/api";
-import { MessageSquare, Mic, Clock } from "lucide-react";
+import { MessageSquare, Mic, Clock, CheckCircle } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import LoginModal from "../auth/LoginModal";
 import AvatarDropdown from "../user/AvatarDropdown";
@@ -27,7 +27,7 @@ export default function Navbar() {
   const [showSearchResults, setShowSearchResults] = useState(false);
   const searchContainerRef = useRef(null);
   const { language, setEN, setJP, getTitle } = useLanguage();
-  const { user, loading: authLoading, globalNotifications } = useAuth();
+  const { user, loading: authLoading, globalNotifications, authToast } = useAuth();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
 
@@ -413,6 +413,16 @@ export default function Navbar() {
         onClose={() => setShowSidebar(false)}
         initialTab={sidebarTab}
       />
+
+      {/* Global Success Toast */}
+      {authToast && (
+        <div className="fixed bottom-6 right-6 z-[10000] animate-in slide-in-from-right duration-300">
+          <div className="bg-[#141414] border border-green-500/20 shadow-[0_10px_40px_rgba(0,0,0,0.5)] px-5 py-3.5 flex items-center gap-3">
+            <CheckCircle size={18} className="text-green-500/30" />
+            <p className="text-white/80 text-[13px] tracking-wide">{authToast}</p>
+          </div>
+        </div>
+      )}
     </>
   );
 }
