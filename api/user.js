@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 const app = require('../backend-core/src/app');
 const connectDB = require('../backend-core/src/config/db');
 

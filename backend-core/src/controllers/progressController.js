@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 const Progress = require('../models/Progress');
 
 // @desc    Save or update anime progress

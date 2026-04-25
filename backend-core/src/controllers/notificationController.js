@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 const Notification = require('../models/Notification');
 
 // @desc    Get all notifications for a user

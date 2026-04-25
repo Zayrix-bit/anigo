@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 const Settings = require('../models/Settings');
 
 // @desc    Get user settings

@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 const express = require('express');
 const { getProgress, saveProgress, deleteProgress } = require('../controllers/progressController');
 const { protect } = require('../middleware/authMiddleware');

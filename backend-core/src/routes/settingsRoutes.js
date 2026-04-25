@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 const express = require('express');
 const { getSettings, updateSettings } = require('../controllers/settingsController');
 const { protect } = require('../middleware/authMiddleware');

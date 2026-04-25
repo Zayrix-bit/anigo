@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 const User = require('../models/User');
 
 // @desc    Get user watchlist

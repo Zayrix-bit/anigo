@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 const express = require('express');
 const { getWatchlist, addToWatchlist, removeFromWatchlist, bulkImport } = require('../controllers/watchlistController');
 const { protect } = require('../middleware/authMiddleware');
