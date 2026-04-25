@@ -17,9 +17,10 @@ import Pagination from "../components/common/Pagination";
 import ThreeColumnSection from "../components/home/ThreeColumnSection";
 import AlphabetNav from "../components/home/AlphabetNav";
 import EstimatedSchedule from "../components/home/EstimatedSchedule";
+import { removeProgress } from "../services/progressService";
 
 export default function Home() {
-  const { globalProgress, user } = useAuth();
+  const { globalProgress, setGlobalProgress, user } = useAuth();
   const [activeSeasonTab, setActiveSeasonTab] = useState("All");
   const cardsPerPage = 36;
 
@@ -132,6 +133,16 @@ export default function Home() {
     .map((a) => a.coverImage?.extraLarge || a.coverImage?.large)
     .filter(Boolean);
 
+  const handleRemoveProgress = async (animeId) => {
+    // Optimistic update
+    setGlobalProgress(prev => prev.filter(p => p.animeId !== animeId));
+    try {
+      await removeProgress(animeId);
+    } catch (error) {
+      console.error("Failed to remove progress:", error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white overflow-x-hidden">
       <Navbar />
@@ -153,6 +164,7 @@ export default function Home() {
             }))}
             isLoading={false}
             limit={6}
+            onRemove={handleRemoveProgress}
           />
         </div>
       )}

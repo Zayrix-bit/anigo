@@ -1,8 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
 import AnimeCard from "../components/common/AnimeCard";
+import Pagination from "../components/common/Pagination";
 import { useAuth } from "../hooks/useAuth";
 import { removeProgress } from "../services/progressService";
 import { User, Clock, Heart, Bell, Download, Settings as SettingsIcon, Trash2 } from "lucide-react";
@@ -11,6 +12,9 @@ export default function ContinueWatching() {
   const { user, globalProgress, setGlobalProgress } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 24;
 
   useEffect(() => {
     if (!user) navigate("/");
@@ -87,23 +91,43 @@ export default function ContinueWatching() {
 
         {/* Grid */}
         {progressCards.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-x-3 md:gap-x-4 gap-y-7">
-            {progressCards.map((anime, i) => (
-              <div key={`${anime.id}-${i}`} className="relative group/card">
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-x-3 md:gap-x-4 gap-y-7">
+              {progressCards
+                .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                .map((anime, i) => (
+                <div key={`${anime.id}-${i}`} className="relative group/card">
                 <AnimeCard anime={anime} />
                 <button
                   onClick={(e) => {
+                    e.preventDefault();
                     e.stopPropagation();
                     handleRemove(anime.id);
                   }}
-                  className="absolute top-2 right-2 z-50 bg-black/70 backdrop-blur-sm p-1.5 rounded-full text-white/40 hover:text-red-500 opacity-0 group-hover/card:opacity-100 transition-all"
+                  className="absolute top-2 right-2 z-50 bg-black/50 backdrop-blur-sm text-white/80 hover:text-red-500 hover:bg-black/80 p-1.5 rounded-full shadow-lg transition-colors md:opacity-0 md:group-hover/card:opacity-100"
                   title="Remove from Continue Watching"
                 >
-                  <Trash2 size={12} />
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
               </div>
-            ))}
-          </div>
+              ))}
+            </div>
+            
+            {progressCards.length > itemsPerPage && (
+              <div className="mt-8">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={Math.ceil(progressCards.length / itemsPerPage)}
+                  onPageChange={(page) => {
+                    setCurrentPage(page);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                />
+              </div>
+            )}
+          </>
         ) : (
           <div className="flex flex-col items-center justify-center py-32 bg-[#141414] border border-white/5 rounded-md shadow-2xl relative overflow-hidden">
             {/* Background Glow */}

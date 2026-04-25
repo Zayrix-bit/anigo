@@ -2,7 +2,7 @@ import AnimeCard from "../common/AnimeCard";
 import SkeletonCard from "../common/SkeletonCard";
 import { ChevronDown } from "lucide-react";
 
-export default function AnimeRow({ title, data, isLoading, limit = 6, tabs = [], activeTab = "", onTabChange }) {
+export default function AnimeRow({ title, data, isLoading, limit = 6, tabs = [], activeTab = "", onTabChange, onRemove }) {
   const hasData = data && data.length > 0;
 
   return (
@@ -52,8 +52,23 @@ export default function AnimeRow({ title, data, isLoading, limit = 6, tabs = [],
           ))
         ) : hasData ? (
           data.slice(0, limit).map((anime, i) => (
-            <div key={`${anime.id}-${i}`} className={i >= 20 ? 'hidden sm:block' : 'block'}>
+            <div key={`${anime.id}-${i}`} className={`relative group/card ${i >= 20 ? 'hidden sm:block' : 'block'}`}>
               <AnimeCard anime={anime} />
+              {onRemove && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onRemove(anime.id);
+                  }}
+                  className="absolute top-2 right-2 z-50 bg-black/50 backdrop-blur-sm text-white/80 hover:text-red-500 hover:bg-black/80 p-1.5 rounded-full shadow-lg transition-colors md:opacity-0 md:group-hover/card:opacity-100"
+                  title="Remove"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
             </div>
           ))
         ) : (
