@@ -1,6 +1,7 @@
 {
   "version": 2,
   "framework": "vite",
+  "regions": ["sin1"],
   "rewrites": [
     {
       "source": "/auth/(.*)",
