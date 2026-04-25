@@ -1185,15 +1185,15 @@ export default function Watch() {
               )}
             </section>
 
-            {/* Premium Action Toolbar (Matches Image) */}
-            <section className={`flex flex-wrap items-center justify-center sm:justify-between py-3 border-b border-white/5 bg-[#0d0d0d] px-4 shadow-lg gap-4 sm:gap-6 transition-all duration-500 ${isFocusMode ? 'fixed bottom-8 left-1/2 -translate-x-1/2 z-50 rounded-full border border-white/10 px-8 py-4 opacity-0 hover:opacity-100 bg-black/60 backdrop-blur-md pointer-events-auto min-w-[600px]' : ''}`}>
-              <div className="flex flex-wrap justify-center items-center gap-4 sm:gap-5 lg:gap-6">
-                {/* Focus */}
+            {/* Action Toolbar (Reverted to Original Style) */}
+            <section className="relative w-full bg-[#0a0a0a] border-x border-b border-white/5 px-4 lg:px-6 py-2 lg:py-3 flex flex-wrap items-center justify-between gap-4 lg:gap-6 select-none">
+              <div className="flex items-center gap-4 sm:gap-5 lg:gap-6">
+                {/* Focus Mode */}
                 <button
                   onClick={() => setIsFocusMode(!isFocusMode)}
-                  className={`flex items-center gap-1.5 transition-all ${isFocusMode ? 'text-yellow-500' : 'text-white/40 hover:text-white'}`}
+                  className={`flex items-center gap-1.5 transition-all ${isFocusMode ? 'text-red-500' : 'text-white/40 hover:text-white'}`}
                 >
-                  {isFocusMode ? <Sun size={15} /> : <Moon size={15} />}
+                  <Moon size={15} fill={isFocusMode ? "currentColor" : "none"} />
                   <span className="text-[9px] font-bold uppercase tracking-wider hidden sm:inline">Focus</span>
                 </button>
 
@@ -1292,7 +1292,7 @@ export default function Watch() {
                            <Heart size={15} fill={isBookmarked ? "currentColor" : "none"} />
                         )}
                         <span className="text-[9px] font-bold uppercase tracking-wider hidden sm:inline">
-                          {isBookmarked ? (backendWatchlist.find(i => i.animeId === String(id))?.status || 'Added') : 'Add to Watchlist'}
+                          {isBookmarked ? 'Saved' : 'Add to Watchlist'}
                         </span>
                       </button>
 
