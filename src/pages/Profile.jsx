@@ -6,7 +6,7 @@ import { updateMe } from "../services/authService";
 import { User, Clock, Heart, Bell, Download, Settings, Key, CheckCircle } from "lucide-react";
 
 export default function Profile() {
-  const { user } = useAuth();
+  const { user, triggerAuthToast } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -19,7 +19,6 @@ export default function Profile() {
   });
   const [showPasswordFields, setShowPasswordFields] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [showToast, setShowToast] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -56,8 +55,7 @@ export default function Profile() {
       if (res.success) {
         setFormData(prev => ({ ...prev, password: "", confirmPassword: "" }));
         setShowPasswordFields(false);
-        setShowToast(true);
-        setTimeout(() => setShowToast(false), 3000);
+        triggerAuthToast("Profile updated successfully");
         // Note: the AuthContext should ideally be updated here, or the page reloaded
         // For simplicity, we just notify the user. Next time they visit, it will fetch fresh.
       }
@@ -211,13 +209,7 @@ export default function Profile() {
       </div>
     </div>
 
-    {/* Success Toast Popup */}
-    {showToast && (
-      <div className="fixed bottom-6 right-6 bg-green-600/90 backdrop-blur-sm text-white px-6 py-4 rounded-md shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-5 z-50">
-        <CheckCircle size={20} className="text-white" />
-        <span className="font-medium text-sm">Profile updated successfully</span>
-      </div>
-    )}
+
   </>
   );
 }
