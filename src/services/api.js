@@ -2,11 +2,11 @@
 import axios from "axios";
 
 const ANILIST_URL = import.meta.env.VITE_ANILIST_API || "https://graphql.anilist.co";
-const ANIXO_SERVER = "";
-const PYTHON_API = "";
+const ANIXO_SERVER = import.meta.env.VITE_NODE_API || "";
+const PYTHON_API = import.meta.env.VITE_PYTHON_API || "";
 
 export const backendApi = axios.create({
-  baseURL: "",
+  baseURL: import.meta.env.VITE_AUTH_API || "",
 });
 
 backendApi.interceptors.request.use((config) => {

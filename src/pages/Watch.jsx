@@ -72,7 +72,7 @@ function CustomCommentSection({ animeId, episode, animeTitle, relations = [], re
   const [showPreview, setShowPreview] = useState(false);
   
   const textareaRef = useRef(null);
-  const API_BASE = "http://localhost:5000/api";
+  const API_BASE = (import.meta.env.VITE_PYTHON_API || "http://localhost:5000") + "/api";
 
   // Sorting Logic
   const sortedComments = [...comments].sort((a, b) => {
@@ -307,7 +307,10 @@ function CustomCommentSection({ animeId, episode, animeTitle, relations = [], re
               animeId, episode, commentId: comment.id, username: user.username
             });
             setIsDeleted(true);
-          } catch (err) { alert("Failed to delete."); }
+          } catch (err) { 
+            console.error("Comment delete error:", err);
+            alert("Failed to delete."); 
+          }
         }
       } else if (type === 'edit') {
         setIsEditing(true);
@@ -323,7 +326,10 @@ function CustomCommentSection({ animeId, episode, animeTitle, relations = [], re
         });
         comment.content = editValue; 
         setIsEditing(false);
-      } catch (err) { alert("Failed to update."); }
+      } catch (err) { 
+        console.error("Comment update error:", err);
+        alert("Failed to update."); 
+      }
       finally { setIsUpdating(false); }
     };
 
@@ -426,6 +432,7 @@ function CustomCommentSection({ animeId, episode, animeTitle, relations = [], re
       setIsFocused(false);
       setShowPreview(false);
     } catch (err) {
+      console.error("Comment posting error:", err);
       alert("Backend error. Check if index.py is running.");
     } finally {
       setIsSending(false);
@@ -440,7 +447,9 @@ function CustomCommentSection({ animeId, episode, animeTitle, relations = [], re
         <div className="flex-1">
           <div className="flex items-end justify-between mb-8">
             <div>
-              <h2 className="text-[20px] font-bold text-white tracking-tight uppercase leading-none">COMMENTS</h2>
+              <h2 className="text-[20px] font-bold text-white tracking-tight uppercase leading-none">
+                COMMENTS {animeTitle && <span className="font-normal opacity-50">— {animeTitle}</span>}
+              </h2>
               <div className="flex items-center gap-1.5 mt-1.5">
                 <MessageSquare size={13} className="text-white/20" />
                 <span className="text-[12px] text-white/20 font-bold uppercase tracking-widest">{comments.length} comments</span>
@@ -707,7 +716,7 @@ export default function Watch() {
   }, [activeEpisode]);
 
   // API Endpoints
-  const PYTHON_API = "";
+  const PYTHON_API = import.meta.env.VITE_PYTHON_API || "";
   const [streamUrl, setStreamUrl] = useState("");
   const [streamData, setStreamData] = useState(null);
   const [streamLoading, setStreamLoading] = useState(false);
