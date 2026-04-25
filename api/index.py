@@ -129,7 +129,7 @@ CORS(app)
 import time
 
 _cache = {}
-CACHE_TTL = 3600  # 1 hour
+CACHE_TTL = 300  # 5 minutes
 
 
 def cached(prefix, ttl=CACHE_TTL):
@@ -163,12 +163,12 @@ def api_response(fn):
                 resp = jsonify({"success": True, **data}) if isinstance(data, dict) else jsonify(data)
                 # Add browser caching for successful GET requests (1 hour)
                 if request.method == "GET" and code == 200:
-                    resp.headers["Cache-Control"] = "public, max-age=3600"
+                    resp.headers["Cache-Control"] = "public, max-age=300"
                 return resp, code
             
             resp = jsonify({"success": True, **result})
             if request.method == "GET":
-                resp.headers["Cache-Control"] = "public, max-age=3600"
+                resp.headers["Cache-Control"] = "public, max-age=300"
             return resp
         except requests.exceptions.RequestException as e:
             log.error("Network error in %s: %s", fn.__name__, e)
