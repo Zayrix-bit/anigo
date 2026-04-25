@@ -3,6 +3,26 @@
   "framework": "vite",
   "rewrites": [
     {
+      "source": "/auth/(.*)",
+      "destination": "/api/user.js"
+    },
+    {
+      "source": "/watchlist/(.*)",
+      "destination": "/api/user.js"
+    },
+    {
+      "source": "/progress/(.*)",
+      "destination": "/api/user.js"
+    },
+    {
+      "source": "/settings/(.*)",
+      "destination": "/api/user.js"
+    },
+    {
+      "source": "/notifications/(.*)",
+      "destination": "/api/user.js"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/api/index.py"
     },
