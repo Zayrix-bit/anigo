@@ -1077,7 +1077,8 @@ export default function Watch() {
 
 
   useEffect(() => {
-    const searchTitle = anime?.title?.english || anime?.title?.romaji || anime?.title?.native;
+    // Anikai favors Romaji for its slugs and search indexing
+    const searchTitle = anime?.title?.romaji || anime?.title?.english || anime?.title?.native;
     if (!searchTitle) { setAnikaiEpisodes([]); return; }
     let cancelled = false;
     (async () => {

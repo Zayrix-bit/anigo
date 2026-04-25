@@ -107,8 +107,9 @@ export function resolveMatch(results, anime, lang = 'sub') {
   const aniListPart = extractPart(anime.title?.english || anime.title?.romaji || "");
 
   const titles = [];
-  if (anime.title?.english) titles.push(anime.title.english);
+  // Prioritize Romaji as Anikai uses it for slugs
   if (anime.title?.romaji) titles.push(anime.title.romaji);
+  if (anime.title?.english) titles.push(anime.title.english);
   if (Array.isArray(anime.synonyms)) {
     for (const s of anime.synonyms) {
       if (s) titles.push(s);
