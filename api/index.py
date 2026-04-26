@@ -84,6 +84,7 @@ class HttpClient:
         return self.client.post(url, data=data, json=json, headers=h, timeout=timeout or self.timeout)
 
     def get_html(self, url, params=None, **kwargs):
+        """GET and return response text (HTML)."""
         resp = self.get(url, params=params, **kwargs)
         resp.raise_for_status()
         return resp.text
@@ -92,12 +93,6 @@ class HttpClient:
         resp = self.get(url, params=params, **kwargs)
         resp.raise_for_status()
         return resp.json()
-
-    def get_html(self, url, params=None, **kwargs):
-        """GET and return response text (HTML)."""
-        resp = self.get(url, params=params, **kwargs)
-        resp.raise_for_status()
-        return resp.text
 
     def get_soup(self, url, params=None, **kwargs):
         """GET and return parsed BeautifulSoup."""
@@ -187,6 +182,7 @@ class AnikaiScraper:
 
     BASE = ANIKAI_BASE
     AJAX = ANIKAI_AJAX
+    TIMEOUT_EXTERNAL = 15
     
     # Static keys for Anidex/Anikai
     _K1 = b"47502123928437581001438240213501"
@@ -676,8 +672,15 @@ class AnikaiScraper:
         if not encrypted_result:
             return None
 
-        embed_data = self._decrypt_kai(encrypted_result)
-        if not embed_data or not embed_data.get("url"):
+        decrypted_str = self._decrypt_kai(encrypted_result)
+        if not decrypted_str:
+            return None
+        try:
+            embed_data = _json.loads(decrypted_str)
+        except (ValueError, TypeError):
+            log.error("Anikai: Failed to parse decrypted embed data as JSON")
+            return None
+        if not embed_data.get("url"):
             return None
 
         embed_url = embed_data["url"]
@@ -692,13 +695,18 @@ class AnikaiScraper:
             media_data = http.get_json(f"{embed_base}/media/{video_id}", headers=headers)
             encrypted_media = media_data.get("result", "")
 
-            final = self._decrypt_mega(encrypted_media)
-            if final:
-                return {
-                    "iframe_url": embed_url,
-                    "sources": final.get("sources", []),
-                    "subtitles": final.get("tracks", []),
-                }
+            decrypted_media = self._decrypt_mega(encrypted_media)
+            if decrypted_media:
+                try:
+                    final = _json.loads(decrypted_media) if isinstance(decrypted_media, str) else decrypted_media
+                except (ValueError, TypeError):
+                    final = {}
+                if final:
+                    return {
+                        "iframe_url": embed_url,
+                        "sources": final.get("sources", []),
+                        "subtitles": final.get("tracks", []),
+                    }
         except Exception as e:
             log.error("Anikai resolution error: %s", e)
 
@@ -1237,19 +1245,7 @@ def api_anikai_stream(ep_token):
 
 
 
-@app.route("/api/python/resolve/<slug>", methods=["GET"])
-@api_response
-def api_python_resolve_slug(slug):
-    print(f"DEBUG: Resolving slug: {slug}")
-    # Try anikai first since we are using it for recent dubs now
-    result = anikai.resolve_to_anilist(slug)
-    if not result:
-        result = gogoanime.resolve_to_anilist(slug)
-    
-    print(f"DEBUG: Result: {result}")
-    if result:
-        return result
-    return {"error": "Could not resolve slug"}, 404
+# Duplicate route removed — already defined at line 1100 as api_python_resolve()
 
 
 @app.route("/api/python/recent-dub", methods=["GET"])
@@ -1451,10 +1447,10 @@ def vote_comment():
                 # Update counts
                 c["likes"] = len(c["likedBy"])
                 c["dislikes"] = len(c["dislikedBy"])
-                break
+                save_comments(all_comments)
+                return jsonify({"success": True, "likes": c["likes"], "dislikes": c["dislikes"]})
                 
-        save_comments(all_comments)
-        return jsonify({"success": True, "likes": c["likes"], "dislikes": c["dislikes"]})
+        return jsonify({"error": "Comment not found"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
