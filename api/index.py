@@ -53,10 +53,13 @@ try:
     from Crypto.Cipher import AES
 except ImportError:
     try:
-        from crypto.Cipher import AES
+        from Cryptodome.Cipher import AES
     except ImportError:
-        AES = None
-        logging.error("CRITICAL: pycryptodome (AES) could not be imported!")
+        try:
+            from crypto.Cipher import AES
+        except ImportError:
+            AES = None
+            logging.error("CRITICAL: pycryptodome (AES) could not be imported!")
 import base64
 
 class HttpClient:

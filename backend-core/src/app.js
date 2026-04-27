@@ -42,7 +42,7 @@ app.use('/progress', progressRoutes);
 app.use('/settings', settingsRoutes);
 app.use('/notifications', notificationRoutes);
 
-app.get('/health', (req, res) => {
+app.get(['/health', '/node-health'], (req, res) => {
   res.json({
     status: 'ok',
     service: 'node-backend',
