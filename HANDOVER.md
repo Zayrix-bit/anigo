@@ -32,7 +32,7 @@ The user is deploying an Anime streaming website (Anixo) on Vercel. Currently, t
 
 ## Pending Tasks:
 1. **Migration to Render/Railway**:
-   - Deploy **Python Backend**: Point to root, use `pip install -r requirements.txt`, and start command `gunicorn api.index:app`.
+   - Deploy **Python Backend**: Point to root, use `pip install -r requirements.txt`, and start command `gunicorn api.index:app --bind 0.0.0.0:$PORT --timeout 120`.
    - Deploy **Node.js Backend**: Point to `backend-core/` directory, use `npm install`, and start command `npm start`.
    - Set Environment Variables:
      - Python: (None required unless scraping needs proxies).
