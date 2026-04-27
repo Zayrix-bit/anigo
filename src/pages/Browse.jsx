@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { getBrowseAnime, getBrowseAnimeAnikai, checkDubAvailability, getRecentDubs, getAnikaiGenres } from "../services/api";
+import { getBrowseAnime, checkDubAvailability, getRecentDubs } from "../services/api";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
 import AnimeCard from "../components/common/AnimeCard";
@@ -15,13 +15,7 @@ export default function Browse() {
   const [openDropdown, setOpenDropdown] = useState(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  const { data: dynamicGenresData } = useQuery({
-    queryKey: ["anikaiGenres"],
-    queryFn: getAnikaiGenres,
-    staleTime: 1000 * 60 * 60 * 24,
-  });
-
-  const displayGenres = dynamicGenresData?.length > 0 ? dynamicGenresData : ALL_GENRES;
+  const displayGenres = ALL_GENRES;
 
   // 1. Filter derivation from URL
   const filters = useMemo(() => {
@@ -91,7 +85,6 @@ export default function Browse() {
     }
   }, [setSearchParams]);
   const queryData = useMemo(() => {
-    const isAnikai = filters.include.length > 0 && !filters.search;
     const vars = {
       page: filters.page,
       perPage: filters.search ? 50 : 36,
@@ -121,16 +114,16 @@ export default function Browse() {
     if (filters.rating) vars.averageScore_greater = parseInt(filters.rating);
     if (filters.language.length > 0) vars.language = filters.language;
 
-    return { vars, isAnikai, lang: filters.language };
+    return { vars, lang: filters.language };
   }, [filters]);
 
   const { data: result = { media: [], pageInfo: { total: 0 } }, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["browse", queryData],
     queryFn: async () => {
-      const { vars, isAnikai } = queryData;
+      const { vars } = queryData;
 
-      // Use the same Dub source as homepage when Dub language is selected, unless we are using Anikai which has native dub filtering
-      if (!isAnikai && filters.language.includes("DUB")) {
+      // Use the same Dub source as homepage when Dub language is selected
+      if (filters.language.includes("DUB")) {
         const cardsPerPage = 36;
         const startIndex = (filters.page - 1) * cardsPerPage;
         const endIndex = startIndex + cardsPerPage;
@@ -176,15 +169,13 @@ export default function Browse() {
         };
       }
 
-      let res = await (isAnikai ? getBrowseAnimeAnikai(vars) : getBrowseAnime(vars));
+      let res = await getBrowseAnime(vars);
 
       // SMART-DECORATE WITH DUB INFO
       // 1. Title Heuristic (Instant) + 2. Backend Verification (Accurate)
       const mediaWithDub = await Promise.all(
         (res.media || []).map(async (anime) => {
           try {
-            // If Anikai already supplied the dub status directly from the HTML scraper, trust it instantly!
-            if (anime.isAnikai && anime.dub !== undefined) return anime;
 
             // Heuristic Check (First Pass)
             const searchTitle = (anime.title?.english || "").toLowerCase();

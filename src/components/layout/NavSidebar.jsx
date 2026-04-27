@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
-import { getSchedule, getAnikaiGenres } from "../../services/api";
+import { getSchedule } from "../../services/api";
 import { X, ChevronRight, LayoutGrid, Calendar, List } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
 import { ALL_GENRES } from "../../constants/genres";
@@ -23,13 +23,7 @@ export default function NavSidebar({ open, onClose, initialTab = "menu" }) {
     }
   }
 
-  const { data: dynamicGenresData } = useQuery({
-    queryKey: ["anikaiGenres"],
-    queryFn: getAnikaiGenres,
-    staleTime: 1000 * 60 * 60 * 24,
-  });
-  
-  const displayGenres = dynamicGenresData?.length > 0 ? dynamicGenresData : ALL_GENRES;
+  const displayGenres = ALL_GENRES;
 
   const [clock, setClock] = useState(new Date());
 

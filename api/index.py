@@ -6,6 +6,8 @@ import json as _json
 import logging
 import difflib
 import hashlib
+import base64
+import gzip
 from functools import wraps
 
 from flask import Flask, jsonify, request
@@ -103,10 +105,146 @@ class HttpClient:
 # Global client instance
 http = HttpClient()
 
-ANIKAI_BASE = "https://anikai.to"
-ANIKAI_AJAX = f"{ANIKAI_BASE}/ajax"
-ANIKAI_HEADERS = {**HttpClient.DEFAULT_HEADERS, "Referer": ANIKAI_BASE + "/"}
-ANIKAI_AJAX_HEADERS = {**ANIKAI_HEADERS, "X-Requested-With": "XMLHttpRequest"}
+# ─── ANILIST & IMAGE PROXY ───────────────────────────────────────────────────
+
+ANILIST_URL = "https://graphql.anilist.co"
+
+def _proxy_img(url: str) -> str:
+    """Prepend serveproxy to a URL to prevent ISP blocking/CORS issues."""
+    if url and isinstance(url, str) and (url.startswith("http://") or url.startswith("https://")):
+        return f"https://serveproxy.com/url?url={url}"
+    return url
+
+def _proxy_deep_images(obj):
+    """Recursively wrap image URLs in an object with serveproxy."""
+    image_keys = {'coverImage', 'bannerImage', 'thumbnail', 'poster', 'image', 'large', 'medium', 'extraLarge'}
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            if key in image_keys and isinstance(value, str) and value.startswith("http"):
+                obj[key] = _proxy_img(value)
+            elif isinstance(value, (dict, list)):
+                _proxy_deep_images(value)
+    elif isinstance(obj, list):
+        for item in obj:
+            _proxy_deep_images(item)
+    return obj
+
+def _anilist_query(query: str, variables: dict = None):
+    """Execute an AniList GraphQL query."""
+    body = {"query": query}
+    if variables:
+        body["variables"] = variables
+    try:
+        resp = http.post(ANILIST_URL, json=body)
+        return resp.json().get("data", {})
+    except Exception as e:
+        log.error(f"AniList query failed: {e}")
+        return {}
+
+MEDIA_LIST_FIELDS = """
+    id
+    title { romaji english native }
+    coverImage { large extraLarge }
+    bannerImage
+    format
+    season
+    seasonYear
+    episodes
+    duration
+    status
+    averageScore
+    meanScore
+    popularity
+    favourites
+    genres
+    source
+    countryOfOrigin
+    isAdult
+    studios(isMain: true) { nodes { name isAnimationStudio } }
+    nextAiringEpisode { episode airingAt timeUntilAiring }
+    startDate { year month day }
+    endDate { year month day }
+"""
+
+MEDIA_FULL_FIELDS = """
+    id
+    idMal
+    title { romaji english native }
+    description(asHtml: false)
+    coverImage { large extraLarge color }
+    bannerImage
+    format
+    season
+    seasonYear
+    episodes
+    duration
+    status
+    averageScore
+    meanScore
+    popularity
+    favourites
+    trending
+    genres
+    tags { name rank isMediaSpoiler }
+    source
+    countryOfOrigin
+    isAdult
+    hashtag
+    synonyms
+    siteUrl
+    trailer { id site thumbnail }
+    studios { nodes { id name isAnimationStudio siteUrl } }
+    nextAiringEpisode { episode airingAt timeUntilAiring }
+    startDate { year month day }
+    endDate { year month day }
+    characters(sort: [ROLE, RELEVANCE], perPage: 25) {
+        edges {
+            role
+            node { id name { full native } image { large } }
+            voiceActors(language: JAPANESE) { id name { full native } image { large } languageV2 }
+        }
+    }
+    staff(sort: RELEVANCE, perPage: 25) {
+        edges {
+            role
+            node { id name { full native } image { large } }
+        }
+    }
+    relations {
+        edges {
+            relationType(version: 2)
+            node {
+                id
+                title { romaji english native }
+                coverImage { large }
+                format
+                type
+                status
+                episodes
+                meanScore
+            }
+        }
+    }
+    recommendations(sort: RATING_DESC, perPage: 10) {
+        nodes {
+            rating
+            mediaRecommendation {
+                id
+                title { romaji english native }
+                coverImage { large }
+                format
+                episodes
+                status
+                meanScore
+                averageScore
+            }
+        }
+    }
+    externalLinks { url site type }
+    streamingEpisodes { title thumbnail url site }
+"""
+
+
 
 app = Flask(__name__)
 CORS(app)
@@ -169,617 +307,6 @@ def api_response(fn):
     wrapper.__name__ = fn.__name__
     return wrapper
 
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  ANIKAI SCRAPER
-# ═══════════════════════════════════════════════════════════════════════════════
-
-from Crypto.Cipher import AES
-import base64
-
-class AnikaiScraper:
-    """Anikai scraper with local AES encryption/decryption."""
-
-    BASE = ANIKAI_BASE
-    AJAX = ANIKAI_AJAX
-    TIMEOUT_EXTERNAL = 15
-    
-    # Static keys for Anidex/Anikai
-    _K1 = b"47502123928437581001438240213501"
-    _IV = b"1001438240213501"
-
-    def _pad(self, s):
-        return s + (AES.block_size - len(s) % AES.block_size) * chr(AES.block_size - len(s) % AES.block_size)
-
-    def _unpad(self, s):
-        return s[:-ord(s[len(s)-1:])]
-
-    def _encrypt(self, text):
-        try:
-            log.info(f"Anikai: Encrypting payload locally...")
-            cipher = AES.new(self._K1, AES.MODE_CBC, self._IV)
-            padded = self._pad(text).encode('utf-8')
-            encrypted = cipher.encrypt(padded)
-            return base64.b64encode(encrypted).decode('utf-8')
-        except Exception as e:
-            log.error(f"Anikai Encryption error: {e}")
-            return None
-
-    def _decrypt(self, data):
-        try:
-            log.info(f"Anikai: Decrypting payload locally...")
-            raw = base64.b64decode(data)
-            cipher = AES.new(self._K1, AES.MODE_CBC, self._IV)
-            decrypted = cipher.decrypt(raw)
-            return self._unpad(decrypted).decode('utf-8')
-        except Exception as e:
-            log.error(f"Anikai Decryption error: {e}")
-            return None
-
-    def _decrypt_kai(self, text):
-        return self._decrypt(text)
-
-    def _decrypt_mega(self, text):
-        return self._decrypt(text)
-
-    @cached("anikai:genres", ttl=86400) # Cache for 24 hours
-    def get_genres(self):
-        try:
-            log.info("Anikai: Fetching genres list...")
-            resp = http.get(self.BASE, timeout=10)
-            soup = BeautifulSoup(resp.text, "html.parser")
-            genres = set()
-            for a in soup.find_all("a", href=True):
-                if "/genres/" in a["href"]:
-                    genres.add(a.get_text(strip=True))
-            return sorted(list(genres))
-        except Exception as e:
-            log.error("Anikai: Failed to fetch genres: %s", e)
-            return []
-
-    def resolve_to_anilist(self, slug):
-        """Resolve an Anikai slug to an AniList ID."""
-        info = self.get_info(slug)
-        title = info.get("title") if info else None
-        
-        # If get_info failed (e.g. Anikai redirected to browser page) or returned raw slug
-        if not title or title == slug:
-            parts = slug.split('-')
-            # Anikai slugs end with a short alphanumeric hash like "-6e9kv"
-            if len(parts) > 1 and len(parts[-1]) <= 6 and parts[-1].isalnum():
-                title = ' '.join(parts[:-1])
-            else:
-                title = ' '.join(parts)
-            
-        log.info(f"Resolving Anikai slug '{slug}' (Derived Title: {title}) to AniList...")
-        
-        # Clean title (remove (Dub), (2025), etc.)
-        clean_title = re.sub(r'\(Dub\)|\(\d{4}\)', '', title).strip()
-        
-        # Search AniList
-        search_query = """
-        query ($search: String) {
-          Page(page: 1, perPage: 5) {
-            media(search: $search, type: ANIME) {
-              id
-              title { romaji english native }
-            }
-          }
-        }
-        """
-        try:
-            resp = http.post(
-                "https://graphql.anilist.co",
-                json={"query": search_query, "variables": {"search": clean_title}},
-                headers={"Content-Type": "application/json"}
-            )
-            data = resp.json()
-            results = data.get("data", {}).get("Page", {}).get("media", [])
-            
-            if not results:
-                return None
-                
-            # Best match logic
-            best_match = results[0] # Default to first result
-            
-            titles = []
-            for r in results:
-                titles.extend([
-                    r["title"].get("romaji", ""),
-                    r["title"].get("english", ""),
-                    r["title"].get("native", "")
-                ])
-            titles = [t for t in titles if t]
-            
-            matches = difflib.get_close_matches(clean_title, titles, n=1, cutoff=0.6)
-            if matches:
-                matched_title = matches[0]
-                for r in results:
-                    if matched_title in [r["title"].get("romaji"), r["title"].get("english"), r["title"].get("native")]:
-                        best_match = r
-                        break
-            
-            log.info(f"Resolved Anikai '{slug}' -> AniList ID: {best_match['id']}")
-            return {"anilist_id": best_match["id"], "title": best_match["title"]}
-            
-        except Exception as e:
-            log.error(f"Anikai resolution failed: {e}")
-            return None
-
-    @cached("anikai:browse", ttl=300)
-    def browse_genre(self, genre_id, page=1, sort="updated_date", formats=None, status=None, year=None, season=None, country=None, language=None):
-        try:
-            log.info(f"Anikai: Browsing genre ID {genre_id} (Page {page}, Sort {sort}, Formats {formats}, Status {status}, Year {year}, Season {season}, Country {country}, Language {language})")
-            url = f"{self.BASE}/browser"
-            params = {"genre[]": genre_id, "page": page, "sort": sort}
-            
-            # Anikai uses type[] for formats
-            if formats:
-                # Flask request.args.getlist or comma separated
-                if isinstance(formats, str):
-                    formats = [f.strip() for f in formats.split(',')]
-                # Anikai format types are lowercase: tv, movie, ova, ona, special, music
-                params["type[]"] = [f.lower() for f in formats]
-                
-            if status:
-                status_map = {"RELEASING": "releasing", "FINISHED": "completed", "NOT_YET_RELEASED": "info"}
-                if status in status_map:
-                    params["status[]"] = status_map[status]
-                    
-            if year:
-                params["year[]"] = str(year)
-                
-            if season:
-                params["season[]"] = season.lower()
-                
-            if country:
-                country_map = {"JP": "11", "CN": "2"}
-                if country in country_map:
-                    params["country[]"] = country_map[country]
-                    
-            if language:
-                if isinstance(language, str):
-                    language = [l.strip() for l in language.split(',')]
-                params["language[]"] = [l.lower() for l in language]
-
-            resp = http.get(url, params=params, timeout=self.TIMEOUT_EXTERNAL)
-            soup = BeautifulSoup(resp.text, "html.parser")
-            
-            results = []
-            for item in soup.select('div.inner'):
-                poster_elem = item.select_one('a.poster img')
-                title_elem = item.select_one('a.title')
-                link_elem = item.select_one('a.poster')
-                
-                if not title_elem or not link_elem:
-                    continue
-                    
-                title = title_elem.get('title') or title_elem.get_text(strip=True)
-                slug_href = link_elem.get('href', '')
-                slug = slug_href.replace('/watch/', '').strip() if slug_href else None
-                poster = poster_elem.get('data-src') or poster_elem.get('src') if poster_elem else None
-                
-                if slug and title:
-                    # Extract episode count and format type
-                    episodes = None
-                    fmt = "TV"
-                    has_dub = False
-                    info_div = item.select_one('div.info')
-                    if info_div:
-                        sub_span = info_div.select_one('span.sub') or info_div.select_one('span.ep')
-                        dub_span = info_div.select_one('span.dub')
-                        
-                        if dub_span:
-                            has_dub = True
-                            
-                        # Use dub count if available, else sub count
-                        target_span = dub_span or sub_span
-                        if target_span:
-                            ep_txt = target_span.get_text(strip=True)
-                            if ep_txt.isdigit():
-                                episodes = int(ep_txt)
-                        
-                        b_tags = info_div.select('b')
-                        if b_tags:
-                            # The last 'b' tag usually contains the format like 'TV' or 'ONA'
-                            # Sometimes an earlier 'b' tag contains the total episodes (e.g., '26')
-                            last_b_text = b_tags[-1].get_text(strip=True)
-                            if not last_b_text.isdigit():
-                                fmt = last_b_text
-
-                    results.append({
-                        "id": slug,
-                        "title": {"english": title, "romaji": title, "native": title},
-                        "coverImage": {"large": poster, "medium": poster},
-                        "episodes": episodes,
-                        "format": fmt,
-                        "dub": has_dub,
-                        "isMAL": False,
-                        "isAnikai": True
-                    })
-                    
-            has_next = bool(soup.select('.pagination a[title="Next"]'))
-            return {"media": results, "pageInfo": {"hasNextPage": has_next, "currentPage": page}}
-        except Exception as e:
-            log.error(f"Anikai: Browse failed: {e}")
-            return {"media": [], "pageInfo": {"hasNextPage": False}}
-
-    @cached("anikai:search", ttl=300)
-    def search(self, query):
-        try:
-            # Using the /browser URL format as suggested by user
-            html = http.get_html(f"{self.BASE}/browser", params={"keyword": query})
-            soup = BeautifulSoup(html, "html.parser")
-            results = []
-            
-            # Anikai /browser results are inside .aitem or .inner containers
-            items = soup.select(".aitem") or soup.select(".inner")
-            
-            for item in items:
-                title_tag = item.select_one(".title") or item.select_one("a.title")
-                if not title_tag:
-                    continue
-                    
-                title = title_tag.get_text(strip=True)
-                
-                # Extract slug from poster link or title link
-                link_tag = item.select_one(".poster") or item.select_one("a.title")
-                if not link_tag:
-                    continue
-                    
-                href = link_tag.get("href", "")
-                slug = href.replace("/watch/", "").strip("/") if "/watch/" in href else href.strip("/")
-
-                # Extract poster
-                poster_img = item.select_one(".poster img") or item.select_one("img")
-                poster = ""
-                if poster_img:
-                    poster = poster_img.get("data-src") or poster_img.get("src") or ""
-
-                if title and slug:
-                    results.append({
-                        "title": title, 
-                        "slug": slug, 
-                        "poster": poster, 
-                        "source": "anikai"
-                    })
-            return results
-        except Exception as e:
-            log.error(f"Anikai Search failed: {e}")
-            return []
-
-    def get_info(self, slug):
-        try:
-            html = http.get_html(f"{self.BASE}/watch/{slug}")
-        except Exception:
-            return None
-
-        soup = BeautifulSoup(html, "html.parser")
-        ani_id = ""
-
-        sync = soup.select_one("script#syncData")
-        if sync:
-            try:
-                data = _json.loads(sync.string) if sync.string else {}
-                ani_id = data.get("anime_id", "")
-            except Exception:
-                pass
-
-        if not ani_id:
-            match = re.search(r'"anime_id"\s*:\s*"([^"]+)"', html)
-            if match:
-                ani_id = match.group(1)
-
-        title = soup.select_one("h1.title")
-        
-        desc_div = soup.select_one(".film-description .text") or soup.select_one(".description")
-        description = desc_div.get_text(separator='<br/>').strip() if desc_div else ""
-
-        info = {
-            "ani_id": ani_id,
-            "title": title.get_text(strip=True) if title else slug,
-            "slug": slug,
-            "description": description,
-        }
-
-
-        label_map = {
-            "Country:": "country",
-            "Premiered:": "premiered",
-            "Date aired:": "aired",
-            "Broadcast:": "broadcast",
-            "Episodes:": "episodes",
-            "Duration:": "duration",
-            "Status:": "status",
-            "MAL Score:": "mal_score",
-            "Studios:": "studios",
-            "Producers:": "producers",
-            "Genres:": "genres",
-            "Rating:": "rating"
-        }
-
-        items = soup.select(".anisc-info .item")
-        for item in items:
-            head = item.select_one(".item-head")
-            if not head:
-                continue
-            label = head.get_text(strip=True)
-            name_tag = item.select_one(".name")
-            if name_tag:
-                names = [a.get_text(strip=True) for a in item.select("a.name")]
-                if not names:
-                    names = [name_tag.get_text(strip=True)]
-                if label == "Genres:":
-                    info["genres"] = names
-                else:
-                    value = ", ".join(names)
-                    if label in label_map:
-                        info[label_map[label]] = value
-            else:
-                value = item.get_text(strip=True).replace(label, "").strip()
-                if label in label_map:
-                    info[label_map[label]] = value
-
-        # Extract numeric year for mapping
-        prem = info.get("premiered") or info.get("aired", "")
-        year_match = re.search(r'\d{4}', prem)
-        info["year"] = int(year_match.group(0)) if year_match else None
-
-        # Extract Seasons - More Robust Logic
-        seasons = []
-        # Find the section that contains "Seasons" text
-        seasons_title = soup.find(["h2", "h3", "div"], string=re.compile(r"Seasons", re.I))
-        seasons_section = None
-        
-        if seasons_title:
-            # The seasons list is usually the next sibling or a parent's child
-            seasons_section = seasons_title.find_next("div", class_=re.compile(r"list|block|items")) or seasons_title.parent
-        
-        # Fallback to known selectors
-        if not seasons_section or not seasons_section.select("a"):
-            seasons_section = soup.select_one(".os-list") or soup.select_one(".ss-list") or soup.select_one(".seasons-block") or soup.select_one("#seasons")
-
-        if seasons_section:
-            for item in seasons_section.select("a"):
-                if "/watch/" not in item.get("href", ""): continue
-                
-                s_title = item.get_text(strip=True)
-                # Clean title if it contains episode count
-                s_title = re.sub(r'\d+\s*EPS.*', '', s_title).strip()
-                
-                s_href = item.get("href", "")
-                s_slug = s_href.replace("/watch/", "").strip("/")
-                
-                # Check for episode count badge
-                ep_badge = item.select_one(".ep-status, .tick-item, .tick-eps, .episode-count")
-                s_episodes = ep_badge.get_text(strip=True) if ep_badge else ""
-                
-                # Extract poster
-                s_poster_img = item.select_one("img")
-                s_poster = ""
-                if s_poster_img:
-                    s_poster = s_poster_img.get("data-src") or s_poster_img.get("src") or ""
-                
-                if s_title and s_slug:
-                    # Very Strict Filter: Must contain a core part of the main title
-                    main_title = info["title"].lower()
-                    # Remove "Re:" prefix for better matching if needed, or just use core words
-                    core_name = re.sub(r'season.*|part.*|s\d+.*', '', main_title).strip()
-                    
-                    # Split core name into meaningful words (length > 2)
-                    core_keywords = [w for w in re.findall(r'\w+', core_name) if len(w) > 2]
-                    
-                    is_relevant = any(word in s_title.lower() for word in core_keywords)
-                    
-                    if is_relevant:
-                        seasons.append({
-                            "title": s_title,
-                            "slug": s_slug,
-                            "episodes": s_episodes,
-                            "poster": s_poster,
-                            "isActive": s_slug == slug or s_slug in slug or slug in s_slug
-                        })
-        
-        info["seasons"] = seasons
-        return info
-
-    def get_episodes(self, ani_id):
-        token = self._encrypt(ani_id)
-        if not token:
-            return []
-
-        try:
-            data = http.get_json(
-                f"{self.AJAX}/episodes/list",
-                params={"ani_id": ani_id, "_": token},
-                headers=ANIKAI_AJAX_HEADERS,
-                referer=self.BASE,
-            )
-        except Exception:
-            return []
-
-        html = data.get("result", "") if data else ""
-        if not html:
-            return []
-
-        soup = BeautifulSoup(html, "html.parser")
-        return [{
-            "number": int(ep.get("num") or 0) if ep.get("num") is not None else 0,
-            "id": ep.get("token", ""),
-            "title": ep.select_one("span").get_text(strip=True) if ep.select_one("span") is not None else f"Episode {ep.get('num', 0)}",
-        } for ep in soup.select(".eplist a")]
-
-    def get_links(self, ep_token):
-        token = self._encrypt(ep_token)
-        if not token:
-            return []
-
-        try:
-            data = http.get_json(
-                f"{self.AJAX}/links/list",
-                params={"token": ep_token, "_": token},
-                headers=ANIKAI_AJAX_HEADERS,
-                referer=self.BASE,
-            )
-        except Exception:
-            return []
-
-        html = data.get("result", "") if data else ""
-        if not html:
-            return []
-
-        soup = BeautifulSoup(html, "html.parser")
-        servers = []
-        groups = soup.select(".server-items")
-        
-        if groups:
-            for group in groups:
-                # Extract lang from data-id (e.g. "sub", "dub", "softsub")
-                group_lang = (group.get("data-id") or "sub").lower()
-                for item in group.select(".server"):
-                    servers.append({
-                        "name": item.get_text(strip=True),
-                        "link_id": item.get("data-lid", ""),
-                        "lang": group_lang
-                    })
-        else:
-            # Fallback for old structure or missing groups
-            for item in soup.select(".server"):
-                servers.append({
-                    "name": item.get_text(strip=True),
-                    "link_id": item.get("data-lid", ""),
-                    "lang": "sub"
-                })
-                
-        return servers
-
-    def resolve_source(self, link_id):
-        token = self._encrypt(link_id)
-        if not token:
-            return None
-
-        try:
-            data = http.get_json(
-                f"{self.AJAX}/links/view",
-                params={"id": link_id, "_": token},
-                headers=ANIKAI_AJAX_HEADERS,
-                referer=self.BASE,
-            )
-        except Exception:
-            return None
-
-        encrypted_result = data.get("result", "") if data else ""
-        if not encrypted_result:
-            return None
-
-        decrypted_str = self._decrypt_kai(encrypted_result)
-        if not decrypted_str:
-            return None
-        try:
-            embed_data = _json.loads(decrypted_str)
-        except (ValueError, TypeError):
-            log.error("Anikai: Failed to parse decrypted embed data as JSON")
-            return None
-        if not embed_data.get("url"):
-            return None
-
-        embed_url = embed_data["url"]
-
-        try:
-            video_id = embed_url.rstrip("/").split("/")[-1].split("?")[0]
-            embed_base = (embed_url.rsplit("/e/", 1)[0] if "/e/" in embed_url
-                          else embed_url.replace("/embed-1/", "/").rsplit("/", 1)[0]).rstrip("/")
-
-            # Fix: Add Referer header to bypass potential blocks on media endpoint
-            headers = {"Referer": embed_url, "User-Agent": HttpClient.DEFAULT_HEADERS["User-Agent"]}
-            media_data = http.get_json(f"{embed_base}/media/{video_id}", headers=headers)
-            encrypted_media = media_data.get("result", "")
-
-            decrypted_media = self._decrypt_mega(encrypted_media)
-            if decrypted_media:
-                try:
-                    final = _json.loads(decrypted_media) if isinstance(decrypted_media, str) else decrypted_media
-                except (ValueError, TypeError):
-                    final = {}
-                if final:
-                    return {
-                        "iframe_url": embed_url,
-                        "sources": final.get("sources", []),
-                        "subtitles": final.get("tracks", []),
-                    }
-        except Exception as e:
-            log.error("Anikai resolution error: %s", e)
-
-        return {"iframe_url": embed_url}
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  ANIKAI ADDITIONS
-# ═══════════════════════════════════════════════════════════════════════════════
-
-    @cached("anikai:recent", ttl=300)
-    def get_recent_episodes(self, type="dub", limit=24, page=1):
-        """Fetch recently updated episodes from Anikai."""
-        results = []
-        try:
-            # Use /recent for the latest updates
-            url = f"{self.BASE}/recent"
-            params = {"page": page}
-            html = http.get_html(url, params=params)
-            soup = BeautifulSoup(html, "html.parser")
-            
-            # Extract pagination
-            last_page = 1
-            pagination = soup.select_one(".pagination")
-            if pagination:
-                pages = pagination.select("li.page-item a.page-link")
-                for p in pages:
-                    href = p.get("href", "")
-                    if "page=" in href:
-                        try:
-                            p_num = int(href.split("page=")[-1].split("&")[0])
-                            if p_num > last_page:
-                                last_page = p_num
-                        except:
-                            continue
-
-            items = soup.select(".aitem")
-            for item in items:
-                # Check for dub badge
-                has_dub = item.select_one(".info .dub")
-                if type == "dub" and not has_dub:
-                    continue
-                
-                title_tag = item.select_one(".title")
-                poster_img = item.select_one(".poster img")
-                href_tag = item.select_one(".poster")
-                
-                if not title_tag or not href_tag:
-                    continue
-                
-                title = title_tag.get_text(strip=True)
-                slug = href_tag.get("href", "").replace("/watch/", "").lstrip("/")
-                
-                results.append({
-                    "id": slug,
-                    "title": {
-                        "romaji": title,
-                        "english": title
-                    },
-                    "coverImage": {
-                        "large": poster_img.get("data-src") or poster_img.get("src") if poster_img else "",
-                        "extraLarge": poster_img.get("data-src") or poster_img.get("src") if poster_img else ""
-                    },
-                    "episodes": has_dub.get_text(strip=True) if has_dub else "?",
-                    "dub": True if type == "dub" else bool(has_dub),
-                    "format": "TV",
-                    "status": "RELEASING"
-                })
-            
-            return {"results": results[:limit], "pageInfo": {"lastPage": last_page, "currentPage": page, "hasNextPage": page < last_page}}
-        except Exception as e:
-            log.error("Anikai: Recent fetch failed: %s", e)
-            return {"results": [], "pageInfo": {"lastPage": 1, "currentPage": page, "hasNextPage": False}}
 
 class GogoanimeScraper:
     """Gogoanime (gogoanimes.cv) scraper — search and episode IDs."""
@@ -1069,12 +596,76 @@ class KitsuScraper:
             return {}
 
 # ═══════════════════════════════════════════════════════════════════════════════
+#  MIRURO SCRAPER
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class MiruroScraper:
+    PIPE_URL = "https://www.miruro.to/api/secure/pipe"
+    HEADERS = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+        "Referer": "https://www.miruro.to/",
+        "Origin": "https://www.miruro.to",
+        "Accept": "*/*",
+        "Accept-Language": "en-US,en;q=0.9"
+    }
+
+    def _encode_pipe_request(self, payload: dict) -> str:
+        return base64.urlsafe_b64encode(_json.dumps(payload).encode()).decode().rstrip('=')
+
+    def _decode_pipe_response(self, encoded_str: str) -> dict:
+        try:
+            encoded_str += '=' * (4 - len(encoded_str) % 4)
+            compressed = base64.urlsafe_b64decode(encoded_str)
+            return _json.loads(gzip.decompress(compressed).decode('utf-8'))
+        except Exception as e:
+            log.error(f"Miruro decode error: {e}")
+            return {}
+
+    def get_episodes(self, anilist_id: int):
+        payload = {
+            "path": "episodes",
+            "method": "GET",
+            "query": {"anilistId": int(anilist_id)},
+            "body": None,
+            "version": "0.1.0",
+        }
+        encoded_req = self._encode_pipe_request(payload)
+        try:
+            data = http.get_json(f"{self.PIPE_URL}?e={encoded_req}", headers=self.HEADERS)
+            return self._decode_pipe_response(data.get("result", "") if isinstance(data, dict) else "") if not data else self._decode_pipe_response(http.get_html(f"{self.PIPE_URL}?e={encoded_req}", headers=self.HEADERS))
+        except Exception as e:
+            html = http.get_html(f"{self.PIPE_URL}?e={encoded_req}", headers=self.HEADERS)
+            return self._decode_pipe_response(html)
+
+    def get_sources(self, ep_id: str, provider: str, anilist_id: int, category: str = "sub"):
+        payload = {
+            "path": "sources",
+            "method": "GET",
+            "query": {
+                "episodeId": ep_id,
+                "provider": provider,
+                "category": category,
+                "anilistId": int(anilist_id),
+            },
+            "body": None,
+            "version": "0.1.0",
+        }
+        encoded_req = self._encode_pipe_request(payload)
+        try:
+            html = http.get_html(f"{self.PIPE_URL}?e={encoded_req}", headers=self.HEADERS)
+            return self._decode_pipe_response(html)
+        except Exception as e:
+            log.error(f"Miruro sources error: {e}")
+            return {}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 #  INSTANTIATE SCRAPERS
 # ═══════════════════════════════════════════════════════════════════════════════
 
-anikai = AnikaiScraper()
 gogoanime = GogoanimeScraper()
 kitsu = KitsuScraper()
+miruro = MiruroScraper()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1086,21 +677,21 @@ kitsu = KitsuScraper()
 def index():
     return jsonify({
         "success": True,
-        "api": "Anigo Unified Scraper API",
+        "api": "Anigo Unified Miruro-Core API",
         "status": "online",
-        "version": "3.0.1",
-        "engines": ["anikai", "gogoanime"],
+        "version": "4.0.0",
+        "engines": ["miruro (primary)", "anilist (meta)"],
         "endpoints": {
-            "/api/anikai/search?keyword=": "Search Anikai",
-            "/api/anikai/info/<slug>": "Anikai info",
-            "/api/anikai/episodes/<ani_id>": "Anikai episodes",
-            "/api/anikai/stream/<ep_token>": "Anikai stream",
-            "/api/gogoanime/search?keyword=": "Search Gogoanime",
-            "/api/gogoanime/info/<slug>": "Gogoanime info",
-            "/api/gogoanime/episodes/<gogoanime_id>": "Gogoanime episodes",
-            "/api/malsync/<mal_id>": "MALSync lookup",
-            "/api/meta/episodes?title=": "Fallback episode metadata (Kitsu)",
-            "/api/python/resolve/<slug>": "Resolve string slug to AniList ID",
+            "/api/trending": "Trending anime from AniList",
+            "/api/popular": "Most popular anime",
+            "/api/recent": "Recently airing episodes",
+            "/api/upcoming": "Anticipated upcoming anime",
+            "/api/spotlight": "Curated spotlight list",
+            "/api/search?query=": "Full AniList metadata search",
+            "/api/info/<anilist_id>": "Complete anime details",
+            "/api/miruro/episodes/<anilist_id>": "Miruro direct stream mappings",
+            "/api/miruro/stream": "Miruro video source extractor",
+            "/api/proxy?url=": "CORS/ISP bypass for media streams"
         },
     })
 
@@ -1108,11 +699,6 @@ def index():
 @app.route("/api/python/resolve/<slug>", methods=["GET"])
 @api_response
 def api_python_resolve(slug):
-    # Try Anikai resolution first
-    result = anikai.resolve_to_anilist(slug)
-    if result:
-        return result
-        
     # Fallback to Gogoanime resolution
     result = gogoanime.resolve_to_anilist(slug)
     if result:
@@ -1134,112 +720,7 @@ def api_meta_episodes():
     return kitsu.get_episode_meta(title=title, alt_title=alt_title, kitsu_id=kitsu_id)
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#  API ROUTES — Anikai
-# ═══════════════════════════════════════════════════════════════════════════════
 
-@app.route("/api/anikai/genres", methods=["GET"])
-@api_response
-def api_anikai_genres():
-    return {"genres": anikai.get_genres()}
-
-@app.route('/api/anikai/browse/<genre_id>', methods=['GET'])
-@api_response
-def api_anikai_browse(genre_id):
-    page = request.args.get('page', 1, type=int)
-    sort = request.args.get('sort', 'updated_date')
-    formats = request.args.getlist('formats[]') or request.args.get('formats')
-    status = request.args.get('status')
-    year = request.args.get('year')
-    season = request.args.get('season')
-    country = request.args.get('country')
-    language = request.args.getlist('language[]') or request.args.get('language')
-    return anikai.browse_genre(genre_id, page, sort, formats, status, year, season, country, language)
-
-
-@app.route("/api/anikai/search", methods=["GET"])
-@api_response
-def api_anikai_search():
-    query = request.args.get("keyword", "").strip()
-    if not query:
-        return {"error": "keyword is required"}, 400
-    return {"results": anikai.search(query)}
-
-
-@app.route("/api/anikai/info/<slug>", methods=["GET"])
-@api_response
-def api_anikai_info(slug):
-    result = anikai.get_info(slug)
-    if not result:
-        return {"error": "Anime not found"}, 404
-    return result
-
-
-@app.route("/api/anikai/episodes/<ani_id>", methods=["GET"])
-@api_response
-def api_anikai_episodes(ani_id):
-    eps = anikai.get_episodes(ani_id)
-    return {"ani_id": ani_id, "count": len(eps), "episodes": eps}
-
-
-@app.route("/api/anikai/stream/<ep_token>", methods=["GET"])
-@api_response
-def api_anikai_stream(ep_token):
-    lang = request.args.get("lang", "sub").lower()
-    # Support strict matching (no fallback to other languages)
-    strict = request.args.get("strict", "false").lower() == "true"
-
-    servers = anikai.get_links(ep_token)
-    if not servers:
-        return {"error": "No servers found for this episode"}, 404
-
-    def is_lang_match(s_lang, target_lang):
-        s_lang = (s_lang or "sub").lower()
-        target_lang = target_lang.lower()
-        if target_lang == "sub":
-            return s_lang in ["sub", "softsub", "hardsub", "raw"]
-        return s_lang == target_lang
-
-    # Filter by language if strict is requested
-    if strict:
-        servers = [s for s in servers if is_lang_match(s.get("lang"), lang)]
-        if not servers:
-            return {"error": f"No {lang} sources found for this episode"}, 404
-
-    def get_score(server):
-        name = server.get("name", "").lower()
-        server_lang = (server.get("lang") or "sub").lower()
-        
-        # Priority 1: Language match
-        lang_score = 100 if is_lang_match(server_lang, lang) else 0
-        # Bonus for exact match
-        exact_match = 50 if server_lang == lang else 0
-        
-        # Priority 2: Quality/Speed preferred servers
-        is_mega_like = 10 if ("mega" in name or "server 1" in name or "filemoon" in name) else 0
-        
-        return (lang_score + exact_match, is_mega_like)
-
-    sorted_servers = sorted(servers, key=get_score, reverse=True)
-
-    last_err = "Failed to resolve any source"
-    for server in sorted_servers:
-        try:
-            server_lang = (server.get("lang") or "sub").lower()
-            log.info("Anikai: Resolving %s (%s) for requested lang: %s...", server["name"], server_lang, lang)
-            source = anikai.resolve_source(server["link_id"])
-            if source and source.get("iframe_url"):
-                log.info("Anikai: Successfully selected server: %s", server["name"])
-                return {
-                    "server_name": server["name"], 
-                    "lang": server_lang,
-                    **source
-                }
-        except Exception as e:
-            log.warning("Anikai: Server %s failed: %s", server["name"], e)
-            last_err = str(e)
-
-    return {"error": last_err}, 500
 
 
 
@@ -1248,17 +729,455 @@ def api_anikai_stream(ep_token):
 # Duplicate route removed — already defined at line 1100 as api_python_resolve()
 
 
-@app.route("/api/python/recent-dub", methods=["GET"])
-@api_response
-def api_python_recent_dub():
-    limit = request.args.get("limit", 24, type=int)
-    page = request.args.get("page", 1, type=int)
-    # Use anikai for dubbed episodes
-    data = anikai.get_recent_episodes(type="dub", limit=limit, page=page)
-    return {
-        "media": data["results"],
-        "pageInfo": data["pageInfo"]
+async def _fetch_collection(sort_type: str, status: str = None, page: int = 1, per_page: int = 24):
+    """Internal helper for fetching collections like trending, popular, etc."""
+    status_filter = f", status: {status}" if status else ""
+    gql = f"""
+    query ($page: Int, $perPage: Int) {{
+        Page(page: $page, perPage: $perPage) {{
+            pageInfo {{ total currentPage lastPage hasNextPage perPage }}
+            media(type: ANIME, sort: [{sort_type}]{status_filter}) {{
+                {MEDIA_LIST_FIELDS}
+            }}
+        }}
+    }}
+    """
+    data = _anilist_query(gql, {"page": page, "perPage": per_page})
+    page_data = data.get("Page", {})
+    page_info = page_data.get("pageInfo", {})
+    response = {
+        "media": page_data.get("media", []),
+        "pageInfo": {
+            "total": page_info.get("total", 0),
+            "currentPage": page_info.get("currentPage", page),
+            "lastPage": page_info.get("lastPage", 1),
+            "hasNextPage": page_info.get("hasNextPage", False),
+            "perPage": page_info.get("perPage", per_page),
+        }
     }
+    return _proxy_deep_images(response)
+
+@app.route("/api/trending", methods=["GET"])
+@api_response
+def api_trending():
+    page = request.args.get("page", 1, type=int)
+    limit = request.args.get("limit", 24, type=int)
+    return _fetch_collection("TRENDING_DESC", page=page, per_page=limit)
+
+@app.route("/api/popular", methods=["GET"])
+@api_response
+def api_popular():
+    page = request.args.get("page", 1, type=int)
+    limit = request.args.get("limit", 24, type=int)
+    return _fetch_collection("POPULARITY_DESC", page=page, per_page=limit)
+
+@app.route("/api/recent", methods=["GET"])
+@api_response
+def api_recent():
+    page = request.args.get("page", 1, type=int)
+    limit = request.args.get("limit", 24, type=int)
+    return _fetch_collection("START_DATE_DESC", "RELEASING", page=page, per_page=limit)
+
+@app.route("/api/upcoming", methods=["GET"])
+@api_response
+def api_upcoming():
+    page = request.args.get("page", 1, type=int)
+    limit = request.args.get("limit", 24, type=int)
+    return _fetch_collection("POPULARITY_DESC", "NOT_YET_RELEASED", page=page, per_page=limit)
+
+@app.route("/api/spotlight", methods=["GET"])
+@api_response
+def api_spotlight():
+    gql = f"""
+    query {{
+        Page(page: 1, perPage: 10) {{
+            media(sort: [TRENDING_DESC, POPULARITY_DESC], type: ANIME) {{
+                {MEDIA_LIST_FIELDS}
+            }}
+        }}
+    }}
+    """
+    data = _anilist_query(gql)
+    media = data.get("Page", {}).get("media", [])
+    return _proxy_deep_images({"media": media})
+
+@app.route("/api/search", methods=["GET"])
+@api_response
+def api_search():
+    query = request.args.get("query", "").strip()
+    page = request.args.get("page", 1, type=int)
+    limit = request.args.get("limit", 24, type=int)
+    
+    if not query:
+        return {"error": "Query required"}, 400
+        
+    gql = f"""
+    query ($search: String, $page: Int, $perPage: Int) {{
+        Page(page: $page, perPage: $perPage) {{
+            pageInfo {{ total currentPage lastPage hasNextPage perPage }}
+            media(search: $search, type: ANIME, sort: SEARCH_MATCH) {{
+                {MEDIA_LIST_FIELDS}
+            }}
+        }}
+    }}
+    """
+    data = _anilist_query(gql, {"search": query, "page": page, "perPage": limit})
+    page_data = data.get("Page", {})
+    page_info = page_data.get("pageInfo", {})
+    response = {
+        "media": page_data.get("media", []),
+        "pageInfo": {
+            "total": page_info.get("total", 0),
+            "currentPage": page_info.get("currentPage", page),
+            "lastPage": page_info.get("lastPage", 1),
+            "hasNextPage": page_info.get("hasNextPage", False),
+            "perPage": page_info.get("perPage", limit),
+        }
+    }
+    return _proxy_deep_images(response)
+
+@app.route("/api/schedule", methods=["GET"])
+@api_response
+def api_schedule():
+    page = request.args.get("page", 1, type=int)
+    limit = request.args.get("limit", 50, type=int)
+    start = request.args.get("start", type=int)
+    end = request.args.get("end", type=int)
+    
+    variables = {"page": page, "perPage": limit}
+    if start: variables["airingAt_greater"] = start
+    if end: variables["airingAt_lesser"] = end
+    
+    gql = f"""
+    query ($page: Int, $perPage: Int, $airingAt_greater: Int, $airingAt_lesser: Int) {{
+        Page(page: $page, perPage: $perPage) {{
+            pageInfo {{ total currentPage lastPage hasNextPage perPage }}
+            airingSchedules(airingAt_greater: $airingAt_greater, airingAt_lesser: $airingAt_lesser, sort: TIME) {{
+                episode
+                airingAt
+                timeUntilAiring
+                media {{
+                    {MEDIA_LIST_FIELDS}
+                }}
+            }}
+        }}
+    }}
+    """
+    data = _anilist_query(gql, variables)
+    page_data = data.get("Page", {})
+    page_info = page_data.get("pageInfo", {})
+    results = []
+    for item in page_data.get("airingSchedules", []):
+        # Keep original structure for frontend compatibility
+        results.append(item)
+        
+    response = {
+        "media": results, # Frontend expects this name for the list
+        "pageInfo": {
+            "total": page_info.get("total", 0),
+            "currentPage": page_info.get("currentPage", page),
+            "lastPage": page_info.get("lastPage", 1),
+            "hasNextPage": page_info.get("hasNextPage", False),
+            "perPage": page_info.get("perPage", limit),
+        }
+    }
+    return _proxy_deep_images(response)
+
+@app.route("/api/suggestions", methods=["GET"])
+@api_response
+def api_suggestions():
+    query = request.args.get("query", "").strip()
+    if not query:
+        return {"suggestions": []}
+        
+    gql = """
+    query ($search: String) {
+        Page(page: 1, perPage: 8) {
+            media(search: $search, type: ANIME, sort: SEARCH_MATCH) {
+                id
+                title { romaji english }
+                coverImage { large }
+                format
+                status
+                startDate { year }
+                episodes
+            }
+        }
+    }
+    """
+    data = _anilist_query(gql, {"search": query})
+    results = []
+    for item in data.get("Page", {}).get("media", []):
+        results.append({
+            "id": item["id"],
+            "title": item["title"].get("english") or item["title"].get("romaji"),
+            "title_romaji": item["title"].get("romaji"),
+            "poster": item["coverImage"]["large"],
+            "format": item.get("format"),
+            "status": item.get("status"),
+            "year": (item.get("startDate") or {}).get("year"),
+            "episodes": item.get("episodes"),
+        })
+    return _proxy_deep_images({"suggestions": results})
+
+@app.route("/api/info/<int:anilist_id>", methods=["GET"])
+@api_response
+def api_info(anilist_id):
+    gql = f"""
+    query ($id: Int) {{
+        Media(id: $id, type: ANIME) {{
+            {MEDIA_FULL_FIELDS}
+        }}
+    }}
+    """
+    data = _anilist_query(gql, {"id": anilist_id})
+    media = data.get("Media")
+    if not media:
+        return {"error": "Anime not found"}, 404
+    return _proxy_deep_images(media)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  API ROUTES — Miruro
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@app.route("/api/miruro/episodes/<anilist_id>", methods=["GET"])
+@api_response
+def api_miruro_episodes(anilist_id):
+    data = miruro.get_episodes(anilist_id)
+    if not data or "providers" not in data:
+        return {"error": "Failed to fetch episodes from Miruro"}, 500
+        
+    # Group episodes by number and collect all providers for each
+    episodes_map = {}
+    
+    for prov_name, prov_data in data["providers"].items():
+        # Handle both SUB and DUB
+        for cat in ["sub", "dub"]:
+            eps = prov_data.get("episodes", {}).get(cat, [])
+            for ep in eps:
+                ep_num = str(ep.get("number"))
+                if ep_num not in episodes_map:
+                    episodes_map[ep_num] = {
+                        "number": ep.get("number"),
+                        "title": ep.get("title") or f"Episode {ep.get('number')}",
+                        "providers": []
+                    }
+                
+                episodes_map[ep_num]["providers"].append({
+                    "id": ep.get("id"),
+                    "name": prov_name,
+                    "category": cat # Track if this provider is for sub or dub
+                })
+            
+    # Convert map to sorted list
+    sorted_episodes = sorted(episodes_map.values(), key=lambda x: x["number"])
+        
+    if not sorted_episodes:
+        return {"error": "No episodes found on Miruro"}, 404
+        
+    return {
+        "success": True,
+        "episodes": sorted_episodes,
+        "anilist_id": anilist_id,
+        "count": len(sorted_episodes)
+    }
+
+@app.route("/api/check-dub/<anilist_id>", methods=["GET"])
+@api_response
+def api_check_dub(anilist_id):
+    """Legacy route for frontend to check if dub episodes exist."""
+    data = miruro.get_episodes(anilist_id)
+    if not data or "providers" not in data:
+        return {"hasSub": True, "hasDub": False, "subCount": 0, "dubCount": 0}
+        
+    sub_count = 0
+    dub_count = 0
+    
+    # Check all providers to see the max episode counts for sub and dub
+    for prov_name, prov_data in data.get("providers", {}).items():
+        eps = prov_data.get("episodes", {})
+        sub_count = max(sub_count, len(eps.get("sub", [])))
+        dub_count = max(dub_count, len(eps.get("dub", [])))
+            
+    return {
+        "hasSub": sub_count > 0,
+        "hasDub": dub_count > 0,
+        "subCount": sub_count,
+        "dubCount": dub_count
+    }
+
+@app.route("/api/miruro/stream", methods=["GET"])
+@api_response
+def api_miruro_stream():
+    ep_id = request.args.get("id")
+    provider = request.args.get("provider")
+    anilist_id = request.args.get("anilist_id")
+    category = request.args.get("category", "sub")
+    
+    log.info(f"Stream Request: ID={ep_id}, Provider={provider}, AniListID={anilist_id}, Category={category}")
+    
+    if not all([ep_id, provider, anilist_id]):
+        log.warning(f"Missing parameters: id={ep_id}, provider={provider}, anilist_id={anilist_id}")
+        return {"error": "Missing parameters (id, provider, anilist_id required)"}, 400
+        
+    try:
+        data = miruro.get_sources(ep_id, provider, int(anilist_id), category)
+    except ValueError:
+        return {"error": "Invalid AniList ID (must be an integer)"}, 400
+
+    if not data or "streams" not in data:
+        log.error(f"Miruro extractor failed for {ep_id}")
+        return {"error": "Failed to extract stream from Miruro"}, 500
+        
+    # Format for frontend
+    sources = []
+    for stream in data.get("streams", []):
+        if stream.get("type") == "hls":
+            # Add proxy URL to help with CORS if needed
+            original_url = stream["url"]
+            # Encode URL to pass safely
+            encoded_url = base64.urlsafe_b64encode(original_url.encode()).decode()
+            sources.append({
+                "url": original_url,
+                "proxy_url": f"{request.host_url.rstrip('/')}/api/proxy?url={encoded_url}",
+                "quality": stream.get("quality", "auto"),
+                "isM3U8": True,
+                "type": "hls"
+            })
+            
+    # Include subtitles if any
+    subtitles = []
+    for sub in data.get("subtitles", []):
+        subtitles.append({
+            "url": sub["file"],
+            "lang": sub.get("label", "Unknown")
+        })
+            
+    # Priority: If Miruro provides an embed, it usually works better for CORS
+    iframe_url = ""
+    if "embed" in data and data["embed"].get("url"):
+        iframe_url = data["embed"]["url"]
+    elif "embeds" in data and len(data["embeds"]) > 0:
+        iframe_url = data["embeds"][0].get("url", "")
+
+    return {
+        "success": True,
+        "sources": sources,
+        "subtitles": subtitles,
+        "iframe_url": iframe_url
+    }
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  HLS PROXY — REWRITING ENGINE (Production Ready)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _encode_url(url):
+    return base64.urlsafe_b64encode(url.encode()).decode()
+
+def _decode_url(encoded):
+    try:
+        return base64.urlsafe_b64decode(encoded).decode()
+    except:
+        return encoded
+
+from urllib.parse import urljoin
+
+def _rewrite_m3u8(content, base_url, proxy_base_url):
+    """Rewrites a .m3u8 manifest to route all links through the proxy."""
+    lines = content.split('\n')
+    new_lines = []
+    
+    for line in lines:
+        line = line.strip()
+        if not line: 
+            new_lines.append("")
+            continue
+        
+        if line.startswith('#'):
+            # Handle attributes that contain URLs (e.g. URI="...")
+            if 'URI="' in line:
+                def replace_uri(match):
+                    uri = match.group(1)
+                    full_uri = urljoin(base_url, uri)
+                    return f'URI="{proxy_base_url}?url={_encode_url(full_uri)}"'
+                
+                new_line = re.sub(r'URI="([^"]+)"', replace_uri, line)
+                new_lines.append(new_line)
+            else:
+                new_lines.append(line)
+        else:
+            # It's a direct URL or path (segment or variant)
+            full_url = urljoin(base_url, line)
+            new_lines.append(f"{proxy_base_url}?url={_encode_url(full_url)}")
+            
+    return '\n'.join(new_lines)
+
+@app.route("/api/proxy", methods=["GET"])
+def proxy():
+    """Robust HLS Proxy with Manifest Rewriting."""
+    encoded_url = request.args.get("url")
+    if not encoded_url:
+        return "Missing url", 400
+
+    url = _decode_url(encoded_url)
+    
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Referer": "https://www.miruro.to/",
+        "Origin": "https://www.miruro.to"
+    }
+
+    try:
+        # We use stream=True for large segments
+        resp = requests.get(url, headers=headers, stream=True, timeout=15, verify=False)
+        
+        # Read a small chunk to sniff the content if MIME type is generic
+        chunk = resp.raw.read(1024)
+        is_m3u8 = b"#EXTM3U" in chunk or url.endswith(".m3u8")
+        
+        from flask import Response
+        
+        if is_m3u8:
+            # It's an HLS manifest, we MUST rewrite it
+            # Combine the sniffed chunk with the rest of the stream
+            remaining_content = resp.raw.read()
+            full_content = (chunk + remaining_content).decode('utf-8', errors='ignore')
+            
+            proxy_base = f"{request.host_url.rstrip('/')}/api/proxy"
+            rewritten = _rewrite_m3u8(full_content, url, proxy_base)
+            
+            proxy_resp = Response(rewritten, status=resp.status_code, mimetype="application/vnd.apple.mpegurl")
+            proxy_resp.headers["Access-Control-Allow-Origin"] = "*"
+            proxy_resp.headers["Cache-Control"] = "no-cache"
+            return proxy_resp
+        
+        # For segments (.ts, .m4s, etc), pipe the remaining stream
+        from flask import stream_with_context
+        
+        def generate():
+            yield chunk # Yield the sniffed chunk first
+            while True:
+                data = resp.raw.read(1024 * 16)
+                if not data: break
+                yield data
+                
+        proxy_resp = Response(stream_with_context(generate()), status=resp.status_code)
+        
+        # Copy essential headers
+        for h in ["Content-Type", "Content-Length", "Cache-Control"]:
+            if h in resp.headers: proxy_resp.headers[h] = resp.headers[h]
+            
+        proxy_resp.headers["Access-Control-Allow-Origin"] = "*"
+        return proxy_resp
+
+    except Exception as e:
+        log.error(f"Proxy Error: {str(e)} for URL: {url[:100]}")
+        return str(e), 500
+
+    except Exception as e:
+        log.error(f"Proxy Error: {str(e)} for URL: {url[:100]}")
+        return str(e), 500
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1478,27 +1397,45 @@ def delete_comment():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route("/api/comments/edit", methods=["POST"])
-def edit_comment():
+# ═══════════════════════════════════════════════════════════════════════════════
+#  PROGRESS SYSTEM API (Unified fallback for port 5001)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+PROGRESS_FILE = os.path.join(os.path.dirname(__file__), "progress.json")
+
+def load_progress():
+    if not os.path.exists(PROGRESS_FILE): return {}
+    try:
+        with open(PROGRESS_FILE, "r", encoding="utf-8") as f: return _json.load(f)
+    except: return {}
+
+def save_progress(data):
+    with open(PROGRESS_FILE, "w", encoding="utf-8") as f: _json.dump(data, f, indent=4)
+
+@app.route("/api/progress", methods=["GET"])
+def get_progress():
+    return jsonify({"success": True, "progress": list(load_progress().values())})
+
+@app.route("/api/progress/save", methods=["POST"])
+def post_progress():
     try:
         data = request.get_json()
-        anime_id = data.get("animeId")
-        episode = data.get("episode")
-        comment_id = int(data.get("commentId"))
-        username = data.get("username")
-        new_content = data.get("content")
-        
-        all_comments = load_comments()
-        key = f"{anime_id}-{episode}"
-        
-        if key in all_comments:
-            for c in all_comments[key]:
-                if c["id"] == comment_id and c["user"] == username:
-                    c["content"] = new_content
-                    break
-            save_comments(all_comments)
-            return jsonify({"success": True})
-        return jsonify({"error": "Not found"}), 404
+        anime_id = str(data.get("animeId"))
+        if not anime_id: return jsonify({"error": "Missing animeId"}), 400
+            
+        all_progress = load_progress()
+        import datetime
+        all_progress[anime_id] = {
+            "animeId": anime_id,
+            "episode": data.get("episode"),
+            "currentTime": data.get("currentTime"),
+            "duration": data.get("duration"),
+            "title": data.get("title"),
+            "coverImage": data.get("coverImage"),
+            "updatedAt": datetime.datetime.now().isoformat()
+        }
+        save_progress(all_progress)
+        return jsonify({"success": True, "progress": all_progress[anime_id]})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -1518,7 +1455,6 @@ if __name__ == "__main__":
                [ API v3.0 — UNIFIED CORE ]
     """
     log.info(banner)
-    log.info("HttpClient ready — 2 engines loaded")
-    log.info("Engines: Anikai · Gogoanime")
+    log.info("HttpClient ready — Engines: Gogoanime, Miruro")
     log.info("Server starting on port 5000...")
     app.run(debug=True, host="0.0.0.0", port=5000)

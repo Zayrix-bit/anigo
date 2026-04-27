@@ -1,15 +1,14 @@
 
 import axios from "axios";
+import { AUTH_API_BASE, NODE_API_BASE, PYTHON_API_BASE } from "../config/apiBase";
 
 const ANILIST_URL = import.meta.env.VITE_ANILIST_API || "https://graphql.anilist.co";
 
-// Use relative paths in production to avoid localhost issues
-const isProd = import.meta.env.PROD;
-const ANIXO_SERVER = import.meta.env.VITE_NODE_API || (isProd ? "" : "http://localhost:5001");
-const PYTHON_API = import.meta.env.VITE_PYTHON_API || (isProd ? "" : "http://localhost:5000");
+const ANIXO_SERVER = NODE_API_BASE;
+const PYTHON_API = PYTHON_API_BASE;
 
 export const backendApi = axios.create({
-  baseURL: import.meta.env.VITE_AUTH_API || (isProd ? "" : "http://localhost:5001"),
+  baseURL: AUTH_API_BASE,
 });
 
 backendApi.interceptors.request.use((config) => {
@@ -77,24 +76,12 @@ const SCHEDULE_QUERY = `
   }
 `;
 
-export async function getSchedule(startTimestamp, endTimestamp) {
+export async function getSchedule(start, end, page = 1) {
   try {
-    const { data } = await axios.post(`${PYTHON_API}/api/anilist/proxy`, {
-      query: SCHEDULE_QUERY,
-      variables: {
-        page: 1,
-        airingAt_greater: startTimestamp,
-        airingAt_lesser: endTimestamp,
-      },
-    }, {
-      headers: { "Content-Type": "application/json" },
+    const { data } = await axios.get(`${PYTHON_API}/api/schedule`, {
+      params: { start, end, page, limit: 50 }
     });
-
-    if (data.errors) {
-      console.error("AniList Schedule Errors:", data.errors);
-      return [];
-    }
-    return data.data?.Page?.airingSchedules || [];
+    return data?.media || [];
   } catch (err) {
     console.error("Schedule Fetch Error:", err);
     return [];
@@ -122,34 +109,15 @@ export const SEARCH_QUERY = `
   }
 `;
 
-export async function searchAnime(query) {
+export async function searchAnime(query, page = 1) {
   if (!query) return [];
   try {
-    const { data } = await axios.get(`${PYTHON_API}/api/anikai/search`, {
-      params: { keyword: query }
+    const { data } = await axios.get(`${PYTHON_API}/api/search`, {
+      params: { query, page, limit: 30 }
     });
-
-    if (data.success && Array.isArray(data.results)) {
-      // Transform Anikai results to match AniList structure expected by UI
-      return data.results.map(item => ({
-        id: item.slug, // Use slug as the ID for routing
-        title: {
-          english: item.title,
-          romaji: item.title,
-          native: item.title
-        },
-        coverImage: {
-          large: item.poster,
-          medium: item.poster
-        },
-        episodes: item.episodes || "?",
-        format: item.format || "TV",
-        isAnikai: true
-      }));
-    }
-    return [];
+    return data?.results || [];
   } catch (err) {
-    console.error("Anikai search failed:", err);
+    console.error("Search Error:", err);
     return [];
   }
 }
@@ -194,43 +162,6 @@ export const BROWSE_QUERY = `
 `;
 
 export async function getBrowseAnime(variables) {
-  // If it's a search query, use Anikai instead of AniList
-  if (variables.search) {
-    try {
-      const { data } = await axios.get(`${PYTHON_API}/api/anikai/search`, {
-        params: { keyword: variables.search }
-      });
-
-      if (data.success && Array.isArray(data.results)) {
-        return {
-          media: data.results.map(item => ({
-            id: item.slug,
-            title: {
-              english: item.title,
-              romaji: item.title,
-              native: item.title
-            },
-            coverImage: {
-              large: item.poster,
-              medium: item.poster
-            },
-            episodes: item.episodes || "?",
-            format: item.format || "TV",
-            isAnikai: true
-          })),
-          pageInfo: {
-            total: data.results.length,
-            currentPage: 1,
-            lastPage: 1,
-            hasNextPage: false
-          }
-        };
-      }
-    } catch (err) {
-      console.error("Anikai Browse Search failed:", err);
-    }
-  }
-
   return fetchFromAniList(BROWSE_QUERY, variables);
 }
 
@@ -257,15 +188,18 @@ export const ANIME_QUERY = `
 `;
 
 export async function getTrendingAnime(page = 1) {
-  return fetchFromAniList(ANIME_QUERY, { page, sort: ["TRENDING_DESC"] });
+  const { data } = await axios.get(`${PYTHON_API}/api/trending`, { params: { page } });
+  return data;
 }
 
 export async function getPopularAnime(page = 1) {
-  return fetchFromAniList(ANIME_QUERY, { page, sort: ["POPULARITY_DESC"] });
+  const { data } = await axios.get(`${PYTHON_API}/api/popular`, { params: { page } });
+  return data;
 }
 
 export async function getNewReleases(page = 1) {
-  return fetchFromAniList(ANIME_QUERY, { page, sort: ["START_DATE_DESC", "TRENDING_DESC"] });
+  const { data } = await axios.get(`${PYTHON_API}/api/recent`, { params: { page } });
+  return data;
 }
 
 const SEASONAL_QUERY = `
@@ -325,52 +259,15 @@ export async function resolveSlugToAnilist(slug) {
     const { data } = await axios.get(`${PYTHON_API}/api/python/resolve/${slug}`);
     return data;
   } catch (err) {
-    console.error("Slug resolution failed:", err.message);
+    console.error("Slug resolution failed:", err);
     return null;
   }
 }
 
-export async function getAnikaiDetails(slug) {
-  if (!slug) return null;
-  try {
-    // If slug looks like a search title (no hyphens/special chars typical of slugs),
-    // search first to get the correct slug
-    const isLikelyTitle = !slug.includes('-') || slug.includes(' ');
-    if (isLikelyTitle) {
-      const { data: searchData } = await axios.get(`${PYTHON_API}/api/anikai/search`, {
-        params: { keyword: slug }
-      });
-      const results = searchData?.results || [];
-      if (results.length > 0) {
-        // Use the first result's slug
-        const { data } = await axios.get(`${PYTHON_API}/api/anikai/info/${encodeURIComponent(results[0].slug)}`);
-        return data;
-      }
-      return null;
-    }
 
-    // Direct slug lookup
-    const { data } = await axios.get(`${PYTHON_API}/api/anikai/info/${encodeURIComponent(slug)}`);
-    return data;
-  } catch (err) {
-    if (err.response?.status === 404) {
-      console.warn(`[Anikai] Details not found for: ${slug}`);
-    } else {
-      console.error("Anikai details failed:", err.message);
-    }
-    return null;
-  }
-}
 
-export async function getAnikaiGenres() {
-  try {
-    const { data } = await axios.get(`${PYTHON_API}/api/anikai/genres`);
-    return data?.genres || [];
-  } catch (err) {
-    console.error("Failed to fetch genres from backend:", err.message);
-    return [];
-  }
-}
+
+
 
 const DETAIL_QUERY = `
 fragment RelationFields on Media {
@@ -496,81 +393,10 @@ query ($id: Int, $idMal: Int) {
 }
 `;
 
-export async function getAnimeDetails(id, isMal = false) {
-  let finalId = id;
-  let finalIsMal = isMal;
-
-  // BUG FIX: If ID is a slug (non-numeric), resolve it to an AniList ID first
-  if (id && isNaN(id) && !isMal) {
-    try {
-      console.log(`[Watch] Resolving slug to AniList ID: ${id}`);
-      // Try unified resolution first (handles Anikai and Gogoanime slugs)
-      const resolutionData = await resolveSlugToAnilist(id);
-      if (resolutionData?.anilist_id) {
-        finalId = resolutionData.anilist_id;
-        console.log(`[Watch] Resolved slug ${id} -> AniList ID: ${finalId}`);
-      }
-    } catch (err) {
-      console.error("[Watch] Mapping resolution failed:", err);
-    }
-  }
-
-  const variables = finalIsMal ? { idMal: parseInt(finalId) } : { id: parseInt(finalId) };
-
-  if (isNaN(variables.id) && !finalIsMal) {
-    console.error("[Watch] Aborting AniList query: ID is still non-numeric after resolution.");
-    return null;
-  }
-
+export async function getAnimeDetails(id) {
   try {
-    const { data } = await axios.post(`${PYTHON_API}/api/anilist/proxy`, {
-      query: DETAIL_QUERY,
-      variables,
-    }, {
-      headers: { "Content-Type": "application/json" },
-    });
-
-    if (data.errors) {
-      console.error("AniList Detail Errors [ID:", finalId, "]:", data.errors);
-      return null;
-    }
-
-    const media = data.data?.Media;
-    if (!media) {
-      console.warn("AniList Detail: No media found for ID:", finalId);
-      return null;
-    }
-
-    // Flatten deep relations for season navigation
-    if (media.relations?.edges) {
-      const flatRelationsMap = new Map();
-
-      const flattenEdges = (edges) => {
-        if (!edges) return;
-        edges.forEach(edge => {
-          if (!edge.node) return;
-          // IMPORTANT: Only include ANIME media. Clicking on Manga/LN causes "Anime Not Found" errors.
-          if (edge.node.type !== 'ANIME') return;
-
-          if (!flatRelationsMap.has(edge.node.id) && edge.node.id !== media.id) {
-            const cleanNode = { ...edge.node };
-            delete cleanNode.relations;
-            flatRelationsMap.set(edge.node.id, {
-              relationType: edge.relationType,
-              node: cleanNode
-            });
-          }
-          if (edge.node.relations?.edges) {
-            flattenEdges(edge.node.relations.edges);
-          }
-        });
-      };
-
-      flattenEdges(media.relations.edges);
-      media.relations.edges = Array.from(flatRelationsMap.values());
-    }
-
-    return media;
+    const { data } = await axios.get(`${PYTHON_API}/api/info/${id}`);
+    return data;
   } catch (err) {
     console.error("getAnimeDetails Error:", err);
     return null;
@@ -650,53 +476,7 @@ export async function getBrowseAnimeMAL(variables) {
   }
 }
 
-export async function getBrowseAnimeAnikai({ page = 1, sort = "TRENDING_DESC", genres = [], format_in = [], status, seasonYear, season, country, language } = {}) {
-  if (!genres.length) return { media: [], pageInfo: {} };
 
-  // We only fetch by the first genre for Anikai since it only supports single genre filtering via its ID easily
-  const { ANIKAI_GENRE_MAP } = await import('../constants/genres');
-  const genreId = ANIKAI_GENRE_MAP[genres[0]];
-  if (!genreId) return { media: [], pageInfo: {} };
-
-  // Map AniList sort strings to Anikai sort parameter
-  let anikaiSort = "updated_date";
-  const currentSort = sort[0] || "";
-
-  if (currentSort.includes("POPULARITY")) anikaiSort = "most_followed";
-  else if (currentSort.includes("SCORE")) anikaiSort = "score";
-  else if (currentSort.includes("START_DATE")) anikaiSort = "release_date";
-  // By default, frontend's TRENDING_DESC will map to 'updated_date' to match Anikai's default behavior
-
-  try {
-    // Bust overly aggressive browser caching (1 hour) using a 5-minute timestamp bucket
-    const cacheBuster = Math.floor(Date.now() / 300000);
-    const apiParams = { page, sort: anikaiSort, _t: cacheBuster };
-    if (format_in && format_in.length > 0) {
-      apiParams.formats = format_in.join(',');
-    }
-    if (status) apiParams.status = status;
-    if (seasonYear) apiParams.year = seasonYear;
-    if (season) apiParams.season = season;
-    if (country) apiParams.country = country;
-    if (language && language.length > 0) {
-      apiParams.language = language.join(',');
-    }
-
-    const { data } = await axios.get(`${PYTHON_API}/api/anikai/browse/${genreId}`, {
-      params: apiParams
-    });
-
-    // Inject the requested genre so that frontend client-side filtering doesn't strip the results
-    if (data && data.media) {
-      data.media = data.media.map(item => ({ ...item, genres: [genres[0]] }));
-    }
-
-    return data;
-  } catch (err) {
-    console.error("Anikai Browse API Error:", err);
-    return { media: [], pageInfo: {} };
-  }
-}
 
 export async function getEpisodeTitles(malId) {
   if (!malId) return [];

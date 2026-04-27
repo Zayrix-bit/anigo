@@ -2,13 +2,13 @@ import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import { getAnimeDetails, getEpisodeTitles, getJikanAnimeDetails, getAnikaiDetails, getSecondaryEpisodeMeta, getMalSyncMapping } from "../services/api";
-import { resolveAnikaiMatch, scoreMetadata } from "../services/anikaiMapping";
+import { getAnimeDetails, getEpisodeTitles, getJikanAnimeDetails, getSecondaryEpisodeMeta, getMalSyncMapping } from "../services/api";
+import { PYTHON_API_BASE } from "../config/apiBase";
+
 import { useLanguage } from "../context/LanguageContext";
 import { useLoading } from "../context/LoadingContext";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
-import AnimeCard from "../components/common/AnimeCard";
 import NextEpisodeBanner from "../components/common/NextEpisodeBanner";
 import VideoPlayer from "../components/common/VideoPlayer";
 import { useAuth } from "../hooks/useAuth";
@@ -70,9 +70,9 @@ function CustomCommentSection({ animeId, episode, animeTitle, relations = [], re
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  
+
   const textareaRef = useRef(null);
-  const API_BASE = (import.meta.env.VITE_PYTHON_API || "http://localhost:5000") + "/api";
+  const API_BASE = `${PYTHON_API_BASE}/api`;
 
   // Sorting Logic
   const sortedComments = [...comments].sort((a, b) => {
@@ -88,10 +88,10 @@ function CustomCommentSection({ animeId, episode, animeTitle, relations = [], re
   const SidebarCard = ({ anime }) => (
     <Link to={`/watch/${anime.id}`} className="flex gap-3 p-2 rounded-[4px] hover:bg-white/[0.03] transition-all group border border-transparent hover:border-white/5 mb-3">
       <div className="w-16 h-20 shrink-0 rounded-[2px] overflow-hidden border border-white/10 bg-white/5">
-        <img 
-          src={anime.coverImage?.extraLarge || anime.coverImage?.large} 
-          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
-          alt="" 
+        <img
+          src={anime.coverImage?.extraLarge || anime.coverImage?.large}
+          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+          alt=""
         />
       </div>
       <div className="flex-1 min-w-0 flex flex-col justify-center">
@@ -102,8 +102,8 @@ function CustomCommentSection({ animeId, episode, animeTitle, relations = [], re
           <span>{anime.format || "TV"}</span>
           <span className="w-1 h-1 rounded-full bg-white/20" />
           <span className="flex items-center gap-1">
-             <Star size={10} className="text-yellow-500" fill="currentColor" />
-             {anime.averageScore ? (anime.averageScore / 10).toFixed(1) : "?"}
+            <Star size={10} className="text-yellow-500" fill="currentColor" />
+            {anime.averageScore ? (anime.averageScore / 10).toFixed(1) : "?"}
           </span>
           <span className="w-1 h-1 rounded-full bg-white/20" />
           <span>{anime.seasonYear || anime.startDate?.year || "?"}</span>
@@ -138,7 +138,7 @@ function CustomCommentSection({ animeId, episode, animeTitle, relations = [], re
     }
 
     setCommentText(newText);
-    
+
     setTimeout(() => {
       el.focus();
       const newPos = selection ? start + selection.length + (cursorOffset * 2) : start + cursorOffset;
@@ -161,8 +161,8 @@ function CustomCommentSection({ animeId, episode, animeTitle, relations = [], re
           }
           if (part.startsWith('||') && part.endsWith('||')) {
             return (
-              <span 
-                key={i} 
+              <span
+                key={i}
                 onClick={(e) => e.currentTarget.classList.toggle('reveal-spoiler')}
                 className="bg-white/10 text-transparent hover:bg-white/20 transition-all px-1.5 py-0.5 rounded cursor-pointer select-none reveal-on-click mx-0.5 inline-block"
               >
@@ -199,10 +199,10 @@ function CustomCommentSection({ animeId, episode, animeTitle, relations = [], re
     if (!timestamp) return "Just now";
     const now = new Date();
     const past = new Date(timestamp);
-    
+
     // Check if date is valid
     if (isNaN(past.getTime())) return "Just now";
-    
+
     const diffInMs = now - past;
     const diffInSecs = Math.floor(diffInMs / 1000);
     const diffInMins = Math.floor(diffInSecs / 60);
@@ -213,7 +213,7 @@ function CustomCommentSection({ animeId, episode, animeTitle, relations = [], re
     if (diffInMins < 60) return `${diffInMins} ${diffInMins === 1 ? 'minute' : 'minutes'} ago`;
     if (diffInHours < 24) return `${diffInHours} ${diffInHours === 1 ? 'hour' : 'hours'} ago`;
     if (diffInDays < 7) return `${diffInDays} ${diffInDays === 1 ? 'day' : 'days'} ago`;
-    
+
     // For older than a week, show the date
     return past.toLocaleDateString();
   };
@@ -240,7 +240,7 @@ function CustomCommentSection({ animeId, episode, animeTitle, relations = [], re
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const targetId = urlParams.get('commentId');
-    
+
     if (targetId && comments.length > 0 && !hasScrolledRef.current) {
       // Check if target comment exists in the current list
       const commentExists = comments.some(c => String(c.id) === String(targetId));
@@ -252,7 +252,7 @@ function CustomCommentSection({ animeId, episode, animeTitle, relations = [], re
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
           element.classList.add('highlight-comment');
           hasScrolledRef.current = true; // Mark as done
-          
+
           setTimeout(() => {
             element.classList.remove('highlight-comment');
           }, 10000);
@@ -307,9 +307,9 @@ function CustomCommentSection({ animeId, episode, animeTitle, relations = [], re
               animeId, episode, commentId: comment.id, username: user.username
             });
             setIsDeleted(true);
-          } catch (err) { 
+          } catch (err) {
             console.error("Comment delete error:", err);
-            alert("Failed to delete."); 
+            alert("Failed to delete.");
           }
         }
       } else if (type === 'edit') {
@@ -324,11 +324,11 @@ function CustomCommentSection({ animeId, episode, animeTitle, relations = [], re
         await axios.post(`${API_BASE}/comments/edit`, {
           animeId, episode, commentId: comment.id, username: user.username, content: editValue
         });
-        comment.content = editValue; 
+        comment.content = editValue;
         setIsEditing(false);
-      } catch (err) { 
+      } catch (err) {
         console.error("Comment update error:", err);
-        alert("Failed to update."); 
+        alert("Failed to update.");
       }
       finally { setIsUpdating(false); }
     };
@@ -338,11 +338,11 @@ function CustomCommentSection({ animeId, episode, animeTitle, relations = [], re
     return (
       <div id={`comment-${comment.id}`} className="flex gap-4 group p-3 rounded-lg transition-all duration-500 hover:bg-white/[0.01]">
         <div className="w-10 h-10 rounded-full bg-white/5 flex-shrink-0 border border-white/10 overflow-hidden">
-           <img 
-             src={comment.avatar || `https://ui-avatars.com/api/?name=${comment.user}&background=random&color=fff`} 
-             className="w-full h-full object-cover" 
-             alt={comment.user} 
-           />
+          <img
+            src={comment.avatar || `https://ui-avatars.com/api/?name=${comment.user}&background=random&color=fff`}
+            className="w-full h-full object-cover"
+            alt={comment.user}
+          />
         </div>
         <div className="flex-1 min-w-0">
           <div className="mb-2">
@@ -356,7 +356,7 @@ function CustomCommentSection({ animeId, episode, animeTitle, relations = [], re
             </div>
           ) : isEditing ? (
             <div className="bg-[#141519] border border-white/10 rounded p-3">
-              <textarea 
+              <textarea
                 value={editValue}
                 onChange={(e) => setEditValue(e.target.value)}
                 className="w-full bg-transparent border-none outline-none text-[14px] text-white/80 resize-none min-h-[60px]"
@@ -382,12 +382,12 @@ function CustomCommentSection({ animeId, episode, animeTitle, relations = [], re
               <button onClick={() => handleInteraction('reply')} className="flex items-center gap-1.5 hover:text-white transition-colors group/btn">
                 <Reply size={14} className="rotate-180" /><span className="text-[11px] font-medium">Reply</span>
               </button>
-              
+
               <div className="relative">
                 <button onClick={() => setShowMore(!showMore)} className={`flex items-center gap-1 hover:text-white transition-colors ${showMore ? 'text-white' : ''}`}>
                   <MoreHorizontal size={14} /><span className="text-[11px] font-medium">More</span>
                 </button>
-                
+
                 {showMore && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setShowMore(false)}></div>
@@ -415,7 +415,7 @@ function CustomCommentSection({ animeId, episode, animeTitle, relations = [], re
   // 2. Post a new comment
   const handlePostComment = async () => {
     if (!commentText.trim() || isSending || !user) return;
-    
+
     try {
       setIsSending(true);
       const payload = {
@@ -425,7 +425,7 @@ function CustomCommentSection({ animeId, episode, animeTitle, relations = [], re
         avatar: user?.avatar || `https://ui-avatars.com/api/?name=${user?.username || 'A'}&background=random&color=fff`,
         content: commentText
       };
-      
+
       const resp = await axios.post(`${API_BASE}/comments`, payload);
       setComments([resp.data, ...comments]);
       setCommentText("");
@@ -442,7 +442,7 @@ function CustomCommentSection({ animeId, episode, animeTitle, relations = [], re
   return (
     <div className="mt-10 md:mt-16 select-none max-w-full overflow-hidden">
       <div className="flex flex-col lg:flex-row gap-10">
-        
+
         {/* LEFT COLUMN: COMMENTS (Wider Breadth) */}
         <div className="flex-1">
           <div className="flex items-end justify-between mb-8">
@@ -456,20 +456,20 @@ function CustomCommentSection({ animeId, episode, animeTitle, relations = [], re
               </div>
             </div>
             <div className="flex items-center gap-5 text-[12px] font-bold text-white/40 uppercase tracking-tight">
-              <button 
-                onClick={() => setSortBy("best")} 
+              <button
+                onClick={() => setSortBy("best")}
                 className={`transition-colors ${sortBy === 'best' ? 'text-white border-b-2 border-red-600 pb-1' : 'hover:text-white'}`}
               >
                 Best
               </button>
-              <button 
-                onClick={() => setSortBy("newest")} 
+              <button
+                onClick={() => setSortBy("newest")}
                 className={`transition-colors ${sortBy === 'newest' ? 'text-white border-b-2 border-red-600 pb-1' : 'hover:text-white'}`}
               >
                 Newest
               </button>
-              <button 
-                onClick={() => setSortBy("oldest")} 
+              <button
+                onClick={() => setSortBy("oldest")}
                 className={`transition-colors ${sortBy === 'oldest' ? 'text-white border-b-2 border-red-600 pb-1' : 'hover:text-white'}`}
               >
                 Oldest
@@ -484,7 +484,7 @@ function CustomCommentSection({ animeId, episode, animeTitle, relations = [], re
             <div className="flex-1 bg-[#1a1c21] rounded-[4px] overflow-hidden border border-white/5 focus-within:border-white/10 transition-all duration-200 ease-out">
               <div className="py-1.5 px-3">
                 {showPreview ? (
-                  <div 
+                  <div
                     className="w-full text-[14px] text-white/80 min-h-[26px] overflow-auto prose prose-invert"
                     dangerouslySetInnerHTML={{ __html: formatPreview(commentText) || "<span class='text-white/10 italic'>Nothing to preview..</span>" }}
                   />
@@ -500,7 +500,7 @@ function CustomCommentSection({ animeId, episode, animeTitle, relations = [], re
                   />
                 )}
               </div>
-              
+
               {/* Snappy Expandable Footer */}
               <div className={`bg-white/[0.02] flex items-center justify-between px-4 border-t border-white/5 transition-all duration-200 ease-in-out overflow-hidden ${isFocused || commentText ? 'max-h-20 py-2 opacity-100 visible' : 'max-h-0 py-0 opacity-0 invisible border-none'}`}>
                 <div className="flex items-center gap-6 text-white/30">
@@ -510,10 +510,10 @@ function CustomCommentSection({ animeId, episode, animeTitle, relations = [], re
                   <button onClick={() => setShowPreview(!showPreview)} className={`transition-colors ${showPreview ? 'text-red-500' : 'hover:text-white'}`}><Eye size={15} /></button>
                 </div>
                 <div className="flex items-center gap-4">
-                  <button onClick={() => {setCommentText(""); setIsFocused(false); setShowPreview(false);}} className="text-[12px] font-bold text-white/30 hover:text-white uppercase px-2">Cancel</button>
-                  <button 
-                    onClick={handlePostComment} 
-                    disabled={!commentText.trim() || isSending} 
+                  <button onClick={() => { setCommentText(""); setIsFocused(false); setShowPreview(false); }} className="text-[12px] font-bold text-white/30 hover:text-white uppercase px-2">Cancel</button>
+                  <button
+                    onClick={handlePostComment}
+                    disabled={!commentText.trim() || isSending}
                     className="bg-red-600 hover:bg-red-700 text-white text-[12px] font-bold px-6 py-2 rounded transition-all uppercase disabled:opacity-40 active:scale-95"
                   >
                     {isSending ? "..." : "Send"}
@@ -539,7 +539,7 @@ function CustomCommentSection({ animeId, episode, animeTitle, relations = [], re
 
         {/* RIGHT COLUMN: SIDEBAR (25%) */}
         <div className="w-full lg:w-[320px] shrink-0 space-y-10">
-          
+
           {/* RELATED SECTION */}
           {relations.length > 0 && (
             <div className="animate-in slide-in-from-right-4 duration-500">
@@ -592,6 +592,7 @@ export default function Watch() {
   const [episodeLayout, setEpisodeLayout] = useState("list"); // "grid" | "list" | "detailed"
   const [playerLang, setPlayerLang] = useState("sub");
   const [activeServer, setActiveServer] = useState(1);
+  const [selectedMiruroProvider, setSelectedMiruroProvider] = useState("arc"); // Default provider
   const [fakeLoading, setFakeLoading] = useState(true);
   const [loadingMessage, setLoadingMessage] = useState("Initializing secure stream...");
 
@@ -675,7 +676,7 @@ export default function Watch() {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
       const skipVal = globalSettings?.skipSeconds || 5;
-      
+
       if (e.key.toLowerCase() === 'l') {
         // Skip Forward
         window.postMessage({ event: "skip", amount: skipVal }, "*");
@@ -700,7 +701,7 @@ export default function Watch() {
       } else if (globalSettings.videoLanguage === 'Soft Sub' || globalSettings.videoLanguage === 'Hard Sub') {
         setPlayerLang('sub');
       }
-      
+
       if (globalSettings.autoPlay !== undefined) setAutoPlay(globalSettings.autoPlay);
       if (globalSettings.autoNext !== undefined) setAutoNext(globalSettings.autoNext);
     }
@@ -719,13 +720,13 @@ export default function Watch() {
   }, [activeEpisode]);
 
   // API Endpoints
-  const PYTHON_API = import.meta.env.VITE_PYTHON_API || "";
+  const PYTHON_API = PYTHON_API_BASE;
   const [streamUrl, setStreamUrl] = useState("");
   const [streamData, setStreamData] = useState(null);
   const [streamLoading, setStreamLoading] = useState(false);
   const [iframeLoaded, setIframeLoaded] = useState(false);
 
-  const [anikaiEpisodes, setAnikaiEpisodes] = useState([]);
+  const [miruroEpisodes, setMiruroEpisodes] = useState([]);
   const [fetchError, setFetchError] = useState(null);
 
   // Sync global page loader with iframe loading
@@ -734,6 +735,10 @@ export default function Watch() {
       setPageLoading(false);
     }
   }, [iframeLoaded, fetchError, streamUrl, streamData, streamLoading, setPageLoading]);
+
+  const handleMediaLoaded = useCallback(() => {
+    setIframeLoaded(true);
+  }, []);
 
   // Clean up loading state on unmount
   useEffect(() => {
@@ -759,7 +764,7 @@ export default function Watch() {
       "Establishing secure tunnel...",
       "Preparing your stream..."
     ];
-    
+
     let msgIndex = 0;
     const msgInterval = setInterval(() => {
       msgIndex++;
@@ -889,7 +894,7 @@ export default function Watch() {
 
   // Verification logic for SUB/DUB sources (Strict Validation & Optimized)
   useEffect(() => {
-    if (!activeEpisode || !anikaiEpisodes.length) {
+    if (!activeEpisode || !miruroEpisodes.length) {
       setHasSub(false);
       setHasDub(false);
       return;
@@ -901,44 +906,12 @@ export default function Watch() {
     setHasSub(false);
     setHasDub(false);
 
-    const verifySources = async () => {
-      const ep = anikaiEpisodes.find(e => String(e.number) === String(activeEpisode));
-      if (!ep) return;
+    const verifySources = () => {
+      const ep = miruroEpisodes.find(e => String(e.number) === String(activeEpisode));
+      if (!ep || !ep.providers) return;
 
-      const token = ep.id;
-
-      const checkLang = async (lang) => {
-        const cacheKey = `${token}-${lang}`;
-        // 1. Check cache first
-        if (streamCache.current.has(cacheKey)) {
-          const data = streamCache.current.get(cacheKey);
-          const hasContent = (Array.isArray(data?.sources) && data.sources.length > 0) || data?.iframe_url;
-          return hasContent && data?.lang === lang;
-        }
-        // 2. Fetch if not cached
-        try {
-          const resp = await axios.get(`${PYTHON_API}/api/anikai/stream/${token}`, {
-            params: { lang, strict: true }
-          });
-          const data = resp.data;
-          // RELAXED VALIDATION: Must have either sources array OR an iframe_url
-          const hasContent = (Array.isArray(data.sources) && data.sources.length > 0) || data.iframe_url;
-          const isValid = data?.success && hasContent && data.lang === lang;
-          if (isValid) {
-            streamCache.current.set(cacheKey, data);
-            return true;
-          }
-        } catch (err) {
-          console.warn(`[Source Verification] ${lang.toUpperCase()} fetch failed:`, err.message);
-        }
-        return false;
-      };
-
-      // Parallel Fetch: Request both but update state as soon as each resolves
-      const [subAvailable, dubAvailable] = await Promise.all([
-        checkLang('sub'),
-        checkLang('dub')
-      ]);
+      const subAvailable = ep.providers.some(p => p.category === "sub");
+      const dubAvailable = ep.providers.some(p => p.category === "dub");
 
       if (cancelled) return;
 
@@ -960,7 +933,7 @@ export default function Watch() {
 
     verifySources();
     return () => { cancelled = true; };
-  }, [activeEpisode, anikaiEpisodes, PYTHON_API, playerLang]);
+  }, [activeEpisode, miruroEpisodes, PYTHON_API, playerLang]);
 
   // MAL Episode Titles (lightweight — only for episode names)
   const { data: malEpisodes } = useQuery({
@@ -989,30 +962,17 @@ export default function Watch() {
     staleTime: 1000 * 60 * 60 * 24,
   });
 
-  // 🚀 Multi-level detail fetching (Anikai > Jikan > Anilist) 🚀
-  const searchTitle = anime?.title?.english || anime?.title?.romaji || anime?.title?.native;
-
-  const { data: anikaiDetails } = useQuery({
-    queryKey: ["anikaiDetails", searchTitle],
-    queryFn: () => getAnikaiDetails(searchTitle),
-    enabled: !!searchTitle,
-    staleTime: 1000 * 60 * 60 * 24,
-  });
 
   const { data: jikanDetails } = useQuery({
     queryKey: ["jikanDetails", anime?.idMal],
     queryFn: () => getJikanAnimeDetails(anime?.idMal),
-    enabled: !!anime?.idMal && !anikaiDetails,
+    enabled: !!anime?.idMal,
     staleTime: 1000 * 60 * 60 * 24,
   });
 
-  // Unified priority resolver: Anikai > Jikan > Anilist
+  // Unified priority resolver
   const resolvedInfo = useMemo(() => {
     const get = (field, ...fallbacks) => {
-      const sources = [anikaiDetails];
-      for (const src of sources) {
-        if (src?.[field]) return src[field];
-      }
       // Jikan uses different keys, handle mapping
       const jikanMap = {
         description: jikanDetails?.synopsis,
@@ -1052,7 +1012,7 @@ export default function Watch() {
       genres: get("genres", anime.genres),
       rating: get("rating"),
     };
-  }, [anime, anikaiDetails, jikanDetails]);
+  }, [anime, jikanDetails]);
 
   // Resolve current episode image for player background/loading placeholder
   const currentEpisodeImage = useMemo(() => {
@@ -1077,84 +1037,29 @@ export default function Watch() {
 
 
   useEffect(() => {
-    // Anikai favors Romaji for its slugs and search indexing
-    const searchTitle = anime?.title?.romaji || anime?.title?.english || anime?.title?.native;
-    if (!searchTitle) { setAnikaiEpisodes([]); return; }
     let cancelled = false;
     (async () => {
       try {
-        const searchResp = await axios.get(`${PYTHON_API}/api/anikai/search`, {
-          params: { keyword: searchTitle },
-        });
-        if (cancelled) return;
-        const results = searchResp.data?.results || [];
-        if (!searchResp.data?.success || results.length === 0) {
-          setAnikaiEpisodes([]);
-          return;
-        }
-        const candidates = resolveAnikaiMatch(results, anime, playerLang);
-        if (candidates.length === 0) {
-          setAnikaiEpisodes([]);
-          return;
-        }
+        let targetId = id;
+        if (anime && anime.id) targetId = anime.id;
+        if (!targetId || isNaN(targetId)) return;
 
-        // DEEP VERIFICATION: Fetch info for top candidates in parallel
-        console.group(`[Mapping] Deep Resolving: ${anime.title?.english || id}`);
-        const infoPromises = candidates.map(c =>
-          axios.get(`${PYTHON_API}/api/anikai/info/${c.slug}`)
-            .then(res => ({ ...c, info: res.data }))
-            .catch(() => ({ ...c, info: null }))
-        );
-
-        const verificationResults = await Promise.all(infoPromises);
-        if (cancelled) {
-          console.groupEnd();
-          return;
-        }
-
-        const finalScored = verificationResults.map(v => {
-          const metaScore = v.info?.success ? scoreMetadata(anime, v.info) : 0;
-          return { ...v, totalScore: (v.score || 0) + metaScore };
-        });
-
-        finalScored.sort((a, b) => b.totalScore - a.totalScore);
-        const best = finalScored[0];
-
-        // Log detailed scoring for transparency
-        console.table(finalScored.map(f => ({
-          Title: f.title,
-          Initial: f.score,
-          MetaBonus: f.totalScore - f.score,
-          Total: f.totalScore,
-          Year: f.info?.year,
-          Eps: f.info?.episodes?.length
-        })));
-        console.groupEnd();
-
-        const resolvedSlug = best.slug;
-        const aniId = best.info?.ani_id;
-        
-        console.info(`[Anikai] Resolving episodes for: ${best.title} (ID: ${aniId}, Slug: ${resolvedSlug})`);
-
-        if (!best.info?.success || !aniId) {
-          setAnikaiEpisodes([]);
-          return;
-        }
-        const epsResp = await axios.get(`${PYTHON_API}/api/anikai/episodes/${aniId}`);
+        console.info(`[Miruro] Resolving episodes for AniList ID: ${targetId}`);
+        const epsResp = await axios.get(`${PYTHON_API}/api/miruro/episodes/${targetId}`);
         if (cancelled) return;
         if (epsResp.data?.success && Array.isArray(epsResp.data.episodes)) {
-          setAnikaiEpisodes(epsResp.data.episodes);
-          console.log("[Anikai] Final Result Loaded: %d episodes", epsResp.data.episodes.length);
+          setMiruroEpisodes(epsResp.data.episodes);
+          console.log("[Miruro] Final Result Loaded: %d episodes", epsResp.data.episodes.length);
         } else {
-          setAnikaiEpisodes([]);
+          setMiruroEpisodes([]);
         }
       } catch (err) {
-        console.error("Anikai deep resolve error:", err);
-        if (!cancelled) setAnikaiEpisodes([]);
+        console.error("Miruro fetch error:", err);
+        if (!cancelled) setMiruroEpisodes([]);
       }
     })();
     return () => { cancelled = true; };
-  }, [anime, id, PYTHON_API, playerLang]);
+  }, [anime, id, PYTHON_API]);
 
 
   const episodesList = useMemo(() => {
@@ -1204,30 +1109,14 @@ export default function Watch() {
       const isAlreadyInList = prev.some(s => s.id === anime.id || s.slug === anime.slug);
 
       if (isAlreadyInList) {
-        return prev.map(s => ({
-          ...s,
-          isActive: (s.id === anime.id || s.slug === (anikaiDetails?.slug || anime.slug))
-        }));
-      }
-
-      // Priority: Anikai Seasons (more accurate for the scraper)
-      if (anikaiDetails?.seasons && anikaiDetails.seasons.length > 0) {
-        return anikaiDetails.seasons.map(s => ({
-          id: s.slug,
-          slug: s.slug,
-          title: {
-            english: s.title,
-            romaji: s.title
-          },
-          coverImage: {
-            large: s.poster || anime.coverImage?.large,
-            medium: s.poster || anime.coverImage?.medium
-          },
-          episodes: parseInt(s.episodes) || 0,
-          format: "TV",
-          isActive: s.isActive,
-          relationToMain: s.isActive ? 'CURRENT' : 'ALTERNATIVE'
-        }));
+        return prev.map(s => {
+          const isActive = s.id === anime.id || s.slug === anime.slug;
+          return {
+            ...s,
+            isActive,
+            relationToMain: isActive ? 'CURRENT' : s.relationToMain
+          };
+        });
       }
 
       // Fallback: AniList Relations
@@ -1284,7 +1173,7 @@ export default function Watch() {
 
       return uniqueItems;
     });
-  }, [anime, anikaiDetails]);
+  }, [anime]);
 
   const getSeasonLabel = (item) => {
     if (!item) return "Current";
@@ -1325,11 +1214,11 @@ export default function Watch() {
 
   const handleUpdateStatus = async (status) => {
     if (!user) return alert("Please login to manage your list");
-    
+
     setIsWatchlistLoading(true);
     const coverImg = anime.coverImage?.large || anime.coverImage?.extraLarge;
     const res = await addToWatchlist(String(id), getTitle(anime.title), coverImg, status);
-    
+
     if (res.success) {
       setBackendWatchlist(res.watchlist);
       setAddingAction(false);
@@ -1458,14 +1347,14 @@ export default function Watch() {
         data.data?.duration,
         data.value?.duration
       );
-      
+
       if (user && currentTime && currentTime > 10) { // Don't track if < 10s
         const now = Date.now();
         // Sync every 10 seconds to avoid spamming the DB
         if (now - lastProgressSync.current > 10000) {
           lastProgressSync.current = now;
           const coverImg = anime?.coverImage?.large || anime?.coverImage?.extraLarge;
-          
+
           updateProgress(String(id), activeEpisode, Math.floor(currentTime), duration ? Math.floor(duration) : null, getTitle(anime?.title), coverImg)
             .then(res => {
               if (res.success && res.progress) {
@@ -1486,27 +1375,37 @@ export default function Watch() {
 
   // ── Performance: Prefetch Next Episode ──
   const prefetchNextEpisode = useCallback(async (nextEpNum) => {
-    if (!anikaiEpisodes.length || activeServer !== 1) return;
+    if (!miruroEpisodes.length || activeServer !== 1) return;
 
-    const nextEp = anikaiEpisodes.find(e => String(e.number) === String(nextEpNum));
-    if (!nextEp || streamCache.current.has(`${nextEp.id}-sub`)) return;
+    const nextEp = miruroEpisodes.find(e => String(e.number) === String(nextEpNum));
+    if (!nextEp || !nextEp.providers || nextEp.providers.length === 0) return;
+
+    const providerObj = nextEp.providers[0];
+    const cacheKey = `${providerObj.id}-sub`;
+    
+    if (streamCache.current.has(cacheKey)) return;
 
     try {
       // Use background fetch to avoid blocking main thread
-      axios.get(`${PYTHON_API}/api/anikai/stream/${nextEp.id}`, {
-        params: { lang: 'sub' }
+      axios.get(`${PYTHON_API}/api/miruro/stream`, {
+        params: {
+          id: providerObj.id,
+          provider: providerObj.name,
+          anilist_id: id || (anime?.id)
+        }
       }).then(resp => {
-        if (resp.data?.success && Array.isArray(resp.data.sources) && resp.data.sources.length > 0) {
-          streamCache.current.set(`${nextEp.id}-sub`, resp.data);
+        if (resp.data?.success && ((Array.isArray(resp.data.sources) && resp.data.sources.length > 0) || resp.data.iframe_url)) {
+          resp.data.lang = 'sub';
+          streamCache.current.set(cacheKey, resp.data);
           console.info(`[Prefetch] Cached Ep ${nextEpNum} (SUB)`);
         }
       }).catch(err => {
-        console.warn(`[Prefetch] Failed for Ep ${nextEpNum}:`, err);
+        console.warn(`[Prefetch] Failed for Ep ${nextEpNum}:`, err.message);
       });
     } catch (err) {
       console.error(`[Prefetch] Error for Ep ${nextEpNum}:`, err);
     }
-  }, [anikaiEpisodes, activeServer, PYTHON_API]);
+  }, [miruroEpisodes, activeServer, PYTHON_API, id, anime?.id]);
 
   // ── Stream Logic: Fetch iframe URL for the active episode ──
   useEffect(() => {
@@ -1519,8 +1418,8 @@ export default function Watch() {
 
       // --- OPTIMIZATION: Check Cache First BEFORE resetting state ---
       if (activeServer === 1) {
-        if (!anikaiEpisodes || anikaiEpisodes.length === 0) return;
-        const ep = anikaiEpisodes.find(e => String(e?.number) === String(activeEpisode));
+        if (!miruroEpisodes || miruroEpisodes.length === 0) return;
+        const ep = miruroEpisodes.find(e => String(e?.number) === String(activeEpisode));
         if (ep) {
           const cacheKey = `${ep.id}-${playerLang}`;
           if (streamCache.current.has(cacheKey)) {
@@ -1552,48 +1451,63 @@ export default function Watch() {
       try {
         let url = "";
 
-        // --- SERVER 1: ANIKAI INTEGRATION (Optimized with Caching & Parallel Fetching) ---
+        // --- SERVER 1: MIRURO INTEGRATION (Optimized with Caching & Parallel Fetching) ---
         if (activeServer === 1) {
-          if (!anikaiEpisodes || anikaiEpisodes.length === 0) {
-            console.info("[Player] Anikai episodes not loaded yet, waiting...");
+          if (!miruroEpisodes || miruroEpisodes.length === 0) {
+            console.info("[Player] Miruro episodes not loaded yet, waiting...");
             return;
           }
 
-          const ep = anikaiEpisodes.find(e => String(e?.number) === String(activeEpisode));
+          const ep = miruroEpisodes.find(e => String(e?.number) === String(activeEpisode));
           if (!ep) {
-            console.error(`[Player] Episode ${activeEpisode} not found. Available:`, anikaiEpisodes.map(e => e.number));
-            setFetchError(`Episode ${activeEpisode} not found on Anikai.`);
+            console.error(`[Player] Episode ${activeEpisode} not found. Available:`, miruroEpisodes.map(e => e.number));
+            setFetchError(`Episode ${activeEpisode} not found on Miruro.`);
             setStreamLoading(false);
             return;
           }
 
-          const token = ep.id;
-          const cacheKey = `${token}-${playerLang}`;
+          if (!ep || !ep.providers || ep.providers.length === 0) {
+            console.warn(`[Player] Episode ${activeEpisode} has no providers available.`);
+            return;
+          }
 
-          // Re-check cache inside try just in case, though we checked above
+          const providerObj = ep.providers?.find(p => p.name === selectedMiruroProvider) || ep.providers?.[0];
+          
+          if (!providerObj || !providerObj.id || !providerObj.name) {
+            console.warn(`[Player] No valid provider found for Ep ${activeEpisode}. Waiting...`);
+            return;
+          }
+
+          // Update selected provider state if it was empty
+          if (!selectedMiruroProvider) {
+            setSelectedMiruroProvider(providerObj.name);
+          }
+
+          const cacheKey = `${providerObj.id}-${playerLang}`;
+
           if (streamCache.current.has(cacheKey)) {
             const cachedData = streamCache.current.get(cacheKey);
             setStreamData(cachedData);
             url = cachedData.iframe_url || (cachedData.sources?.[0]?.url);
           } else {
-            // 2. Parallel Fetch: Request both SUB and DUB to populate cache and speed up toggle
-            // But only await the requested language to show UI as fast as possible
-            const fetchLang = (lang) => axios.get(`${PYTHON_API}/api/anikai/stream/${token}`, {
-              params: { lang, strict: true },
+            // Miruro API stream request
+            const targetData = await axios.get(`${PYTHON_API}/api/miruro/stream`, {
+              params: {
+                id: providerObj.id,
+                provider: providerObj.name,
+                anilist_id: id || (anime?.id),
+                category: playerLang // Pass 'sub' or 'dub'
+              },
               timeout: 15000
-            }).then(res => res.data).catch(() => null);
-
-            // Start both in parallel
-            const subPromise = fetchLang('sub');
-            const dubPromise = fetchLang('dub');
-
-            // Wait for requested language with a fallback to avoid crash
-            const targetData = await (playerLang === 'sub' ? subPromise : dubPromise);
+            }).then(res => res.data).catch(err => {
+              console.error("[Player] Miruro fetch failed:", err);
+              return null;
+            });
 
             if (cancelled) return;
 
             if (!targetData) {
-              setFetchError(`Backend did not respond for ${playerLang.toUpperCase()}.`);
+              setFetchError(`Backend did not respond.`);
               setStreamLoading(false);
               return;
             }
@@ -1601,18 +1515,35 @@ export default function Watch() {
             const hasContent = (Array.isArray(targetData.sources) && targetData.sources.length > 0) || targetData.iframe_url;
 
             if (targetData.success && hasContent) {
-              streamCache.current.set(cacheKey, targetData);
-              setStreamData(targetData);
-              url = targetData.iframe_url || (targetData.sources?.[0]?.url);
+              // Ensure streamData has required fields for the player
+              setStreamData({
+                ...targetData,
+                sources: targetData.sources || [],
+                subtitles: targetData.subtitles || [],
+                intro: targetData.intro || null,
+                outro: targetData.outro || null,
+                lang: playerLang
+              });
 
-              // Background: Populate other language cache
-              const otherData = await (playerLang === 'sub' ? dubPromise : subPromise);
-              const hasOtherContent = otherData?.success && ((Array.isArray(otherData.sources) && otherData.sources.length > 0) || otherData.iframe_url);
-              if (hasOtherContent) {
-                streamCache.current.set(`${token}-${playerLang === 'sub' ? 'dub' : 'sub'}`, otherData);
+              // Priority: iframe_url > m3u8 source (iframe is more stable for Miruro/Megaplay)
+              url = targetData.iframe_url || targetData.sources?.find(s => s.url.includes('.m3u8'))?.url || targetData.sources?.[0]?.url;
+              
+              // If we are forced to use a direct HLS source, apply the proxy
+              const directSource = targetData.sources?.find(s => s.url === url);
+              if (directSource?.url?.includes('.m3u8') && directSource?.proxy_url && !targetData.iframe_url) {
+                url = directSource.proxy_url;
               }
+
+              // If we have direct sources, we don't need to wait for iframe load event
+              if (targetData.sources && targetData.sources.length > 0) {
+                setIframeLoaded(true);
+              } else {
+                setIframeLoaded(false);
+              }
+
+              setFetchError(null); // Clear any previous errors
             } else {
-              setFetchError(`No ${playerLang.toUpperCase()} sources found for this episode.`);
+              setFetchError(`Backend: No sources available for this episode.`);
               setStreamLoading(false);
               return;
             }
@@ -1642,21 +1573,25 @@ export default function Watch() {
         if (url) {
           // Inject Autoplay and premium params
           try {
-            const urlObj = new URL(url);
+            let finalUrl = url;
+            // Handle relative URLs for proxy
+            const isRelative = url.startsWith('/');
+            const base = isRelative ? window.location.origin : undefined;
+            
+            const urlObj = new URL(url, base);
             if (autoPlay) {
               urlObj.searchParams.set("autoplay", "1");
-              // Browser Policy: Autoplay is only allowed if the video is muted.
-              // We mute it so it starts automatically as requested, and user can unmute.
               urlObj.searchParams.set("muted", "1");
             } else {
               urlObj.searchParams.set("muted", "0");
             }
+            finalUrl = urlObj.toString();
 
             // FORCE REFRESH: Append a hash to ensure unique URL per language
             // This forces React to destroy the iframe and create a new one.
-            const finalUrl = `${urlObj.toString()}#lang=${playerLang}`;
-            setStreamUrl(finalUrl);
-            console.log(`[Player] Final Stream URL injected into iframe: ${finalUrl}`);
+            const finalUrlWithHash = `${finalUrl}#lang=${playerLang}`;
+            setStreamUrl(finalUrlWithHash);
+            console.log(`[Player] Final Stream URL injected: ${finalUrlWithHash}`);
           } catch {
             // Fallback for non-URL strings
             const finalUrl = `${url}#lang=${playerLang}`;
@@ -1676,7 +1611,7 @@ export default function Watch() {
     fetchStream();
 
     return () => { cancelled = true; };
-  }, [id, anime?.id, anime?.idMal, activeEpisode, playerLang, activeServer, anikaiEpisodes, PYTHON_API, autoPlay, episodesList.length, prefetchNextEpisode, setPageLoading]);
+  }, [id, anime?.id, anime?.idMal, activeEpisode, playerLang, activeServer, miruroEpisodes, PYTHON_API, autoPlay, episodesList.length, prefetchNextEpisode, setPageLoading]);
 
   const handleReport = async () => {
     // Simulate API call for reporting
@@ -1777,7 +1712,7 @@ export default function Watch() {
                           <div className="absolute top-0 left-0 w-14 h-14 border-[2px] border-red-600 border-t-transparent rounded-full animate-spin shadow-[0_0_30px_rgba(220,38,38,0.4)]"></div>
                           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-red-600 rounded-full animate-pulse"></div>
                         </div>
-                        
+
                         <div className="flex flex-col items-center gap-2">
                           <p className="text-white font-medium text-[11px] lg:text-[13px] tracking-wide animate-in fade-in slide-in-from-bottom-2 duration-500">
                             {loadingMessage}
@@ -1803,11 +1738,12 @@ export default function Watch() {
               {streamUrl && (
                 streamData?.sources && Array.isArray(streamData.sources) && streamData.sources.length > 0 && !streamData?.iframe_url ? (
                   <VideoPlayer
-                    src={streamData.sources[0].url}
+                    src={streamUrl}
                     type={streamData.sources[0].type}
                     poster={anime?.coverImage?.extraLarge || anime?.coverImage?.large}
                     subtitles={streamData.subtitles || []}
                     initialTime={initialTime}
+                    onLoaded={handleMediaLoaded}
                   />
                 ) : (
                   <iframe
@@ -1816,7 +1752,6 @@ export default function Watch() {
                     src={streamUrl}
                     onLoad={() => setIframeLoaded(true)}
                     className={`w-full h-full border-0 transition-opacity duration-500 ${!iframeLoaded ? 'opacity-0' : 'opacity-100'}`}
-                    allowFullScreen
                     scrolling="no"
                     allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
                   />
@@ -1926,9 +1861,9 @@ export default function Watch() {
                         className={`flex items-center gap-1.5 transition-all ${isBookmarked ? 'text-red-600' : 'text-white/40 hover:text-white'}`}
                       >
                         {isWatchlistLoading ? (
-                           <div className="w-3.5 h-3.5 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+                          <div className="w-3.5 h-3.5 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
                         ) : (
-                           <Heart size={15} fill={isBookmarked ? "currentColor" : "none"} />
+                          <Heart size={15} fill={isBookmarked ? "currentColor" : "none"} />
                         )}
                         <span className="text-[9px] font-bold uppercase tracking-wider hidden sm:inline">
                           {isBookmarked ? 'Saved' : 'Add to Watchlist'}
@@ -1941,8 +1876,7 @@ export default function Watch() {
                             <button
                               key={status}
                               onClick={() => handleUpdateStatus(status)}
-                              className={`w-full text-left px-4 py-2.5 text-[12px] font-medium transition-colors ${
-                                (backendWatchlist.find(i => i.animeId === String(id))?.status || 'Planning') === status
+                              className={`w-full text-left px-4 py-2.5 text-[12px] font-medium transition-colors ${(backendWatchlist.find(i => i.animeId === String(id))?.status || 'Planning') === status
                                 ? 'text-white border-l-2 border-red-600 bg-white/5'
                                 : 'text-white/60 hover:text-white hover:bg-[#222]'
                                 }`}
@@ -1983,7 +1917,8 @@ export default function Watch() {
               </div>
             </section>
             {!isFocusMode && (
-              <section className="flex flex-col md:flex-row md:items-center justify-between py-4 lg:py-6 gap-4 lg:gap-6">
+              <>
+                <section className="flex flex-col md:flex-row md:items-center justify-between py-4 lg:py-6 gap-4 lg:gap-6">
                 <div className="text-center md:text-left">
                   <p className="text-[13px] lg:text-[14px] font-bold text-white/70 tracking-wide">
                     You are watching <span className="text-red-600">Episode {activeEpisode}</span>
@@ -2017,23 +1952,56 @@ export default function Watch() {
 
 
                   {/* Servers List */}
-                  <div className="flex items-center gap-2 overflow-x-auto no-scrollbar max-w-[300px]">
-                    {[1, 2, 3].map((num) => (
+                  <div className="flex items-center gap-2 overflow-x-auto no-scrollbar max-w-[400px]">
+                    {[
+                      { num: 1, label: "Miruro" },
+                      { num: 2, label: "Megaplay 1" },
+                      { num: 3, label: "Megaplay 2" }
+                    ].map((server) => (
                       <button
-                        key={num}
-                        onClick={() => setActiveServer(num)}
-                        className={`px-4 py-2 text-[10px] font-bold uppercase tracking-widest rounded-sm border transition-all shrink-0 ${activeServer === num
-                          ? "bg-red-600 text-white border-red-500 shadow-xl shadow-red-900/20"
+                        key={server.num}
+                        onClick={() => setActiveServer(server.num)}
+                        className={`px-4 py-2 text-[10px] font-bold uppercase tracking-widest rounded-sm border transition-all shrink-0 ${activeServer === server.num
+                          ? "bg-red-600 text-white border-red-500 shadow-xl shadow-red-900/20 scale-105"
                           : "bg-[#111] text-white/30 border-white/5 hover:bg-[#161616] hover:text-white/70"
                           }`}
                       >
-                        S{num}
+                        {server.label}
                       </button>
                     ))}
                   </div>
                 </div>
               </section>
+
+
+              {activeServer === 1 && miruroEpisodes.length > 0 && (
+              <section className="py-4 border-t border-white/5 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h4 className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] mb-1">Select Provider (Miruro)</h4>
+                    <p className="text-[9px] text-white/20 uppercase font-medium tracking-widest">Try different providers if one is slow or forbidden.</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {(miruroEpisodes.find(e => String(e.number) === String(activeEpisode))?.providers || [])
+                      .filter(p => p.category === playerLang)
+                      .map((prov) => (
+                        <button
+                          key={`${prov.name}-${prov.category}`}
+                          onClick={() => setSelectedMiruroProvider(prov.name)}
+                          className={`px-3 py-1.5 rounded-sm text-[9px] font-bold uppercase tracking-widest border transition-all ${selectedMiruroProvider === prov.name
+                            ? "bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.2)]"
+                            : "bg-white/5 text-white/40 border-white/5 hover:text-white hover:bg-white/10"
+                            }`}
+                        >
+                          {prov.name}
+                        </button>
+                      ))}
+                  </div>
+                </div>
+              </section>
             )}
+          </>
+        )}
 
             {/* Next Episode Banner - Moved here for better visibility */}
             {!isFocusMode && (
@@ -2583,10 +2551,10 @@ export default function Watch() {
             )}
 
             {/* 3. Custom Comment Section (Aniwatch Style) */}
-            <CustomCommentSection 
-              animeId={id} 
-              animeTitle={getTitle(anime.title)} 
-              episode={activeEpisode} 
+            <CustomCommentSection
+              animeId={id}
+              animeTitle={getTitle(anime.title)}
+              episode={activeEpisode}
               relations={relations}
               recommendations={recommendations}
             />

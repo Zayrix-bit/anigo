@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "npx vite build",
+    "build": "npx vite build && node ./scripts/validate-prod-bundle.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },

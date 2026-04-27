@@ -11,7 +11,7 @@ Below is the complete architectural layout of the project:
 ```text
 anixo/
 ├── api/                    # 🚀 Unified Backend (Vercel Functions)
-│   ├── index.py            # 🐍 Python Scraper (Anikai, Gogoanime)
+│   ├── index.py            # 🐍 Python Scraper (Gogoanime, Miruro)
 │   ├── user.js             # 🟢 Node.js Gateway (Auth, Watchlist)
 │   ├── user-backend/       # 📂 Core Node.js Logic & Models
 │   └── package.json        # 📦 Node.js Backend Dependencies

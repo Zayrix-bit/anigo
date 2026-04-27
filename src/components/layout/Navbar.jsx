@@ -3,8 +3,8 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { ALL_GENRES } from "../../constants/genres";
 import NavSidebar from "./NavSidebar";
 import { useLanguage } from "../../context/LanguageContext";
-import { useQuery } from "@tanstack/react-query";
-import { searchAnime, getAnikaiGenres } from "../../services/api";
+
+import { searchAnime } from "../../services/api";
 import { MessageSquare, Mic, Clock, CheckCircle } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import LoginModal from "../auth/LoginModal";
@@ -33,12 +33,7 @@ export default function Navbar() {
 
   const unreadCount = globalNotifications.filter(n => !n.isRead).length;
 
-  const { data: dynamicGenresData } = useQuery({
-    queryKey: ["anikaiGenres"],
-    queryFn: getAnikaiGenres,
-    staleTime: 1000 * 60 * 60 * 24,
-  });
-  const displayGenres = dynamicGenresData?.length > 0 ? dynamicGenresData : ALL_GENRES;
+  const displayGenres = ALL_GENRES;
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
