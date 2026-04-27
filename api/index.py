@@ -262,6 +262,7 @@ MEDIA_FULL_FIELDS = """
 app = Flask(__name__)
 CORS(app)
 
+@app.route("/health", methods=["GET"])
 @app.route("/api/health", methods=["GET"])
 def api_health():
     return jsonify({
