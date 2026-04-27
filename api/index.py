@@ -115,6 +115,9 @@ class HttpClient:
 # Global client instance
 http = HttpClient()
 
+# Render/Production Port Handling
+PORT = int(os.environ.get("PORT", 5000))
+
 # ─── ANILIST & IMAGE PROXY ───────────────────────────────────────────────────
 
 ANILIST_URL = "https://graphql.anilist.co"
@@ -1464,16 +1467,7 @@ def post_progress():
 # ═══════════════════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
-    banner = """
-    █████╗ ███╗   ██╗██╗ ██████╗  ██████╗ 
-    ██╔══██╗████╗  ██║██║██╔════╝ ██╔═══██╗
-    ███████║██╔██╗ ██║██║██║  ███╗██║   ██║
-    ██╔══██║██║╚██╗██║██║██║   ██║██║   ██║
-    ██║  ██║██║ ╚████║██║╚██████╔╝╚██████╔╝
-    ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝ ╚═════╝  ╚═════╝ 
-               [ API v3.0 — UNIFIED CORE ]
-    """
-    log.info(banner)
-    log.info("HttpClient ready — Engines: Gogoanime, Miruro")
-    log.info("Server starting on port 5000...")
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    # Use the same PORT logic for local development
+    port = int(os.environ.get("PORT", 5000))
+    log.info(f"Server starting on port {port}...")
+    app.run(host="0.0.0.0", port=port)
