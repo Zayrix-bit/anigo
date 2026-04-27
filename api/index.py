@@ -49,7 +49,14 @@ log.addHandler(_handler)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 import httpx
-from Crypto.Cipher import AES
+try:
+    from Crypto.Cipher import AES
+except ImportError:
+    try:
+        from crypto.Cipher import AES
+    except ImportError:
+        AES = None
+        logging.error("CRITICAL: pycryptodome (AES) could not be imported!")
 import base64
 
 class HttpClient:
@@ -254,7 +261,8 @@ def api_health():
     return jsonify({
         "status": "ok",
         "service": "python-backend",
-        "environment": os.environ.get("VERCEL_ENV", "development")
+        "environment": os.environ.get("VERCEL_ENV", "development"),
+        "aes_available": AES is not None
     })
 
 
