@@ -249,6 +249,14 @@ MEDIA_FULL_FIELDS = """
 app = Flask(__name__)
 CORS(app)
 
+@app.route("/api/health", methods=["GET"])
+def api_health():
+    return jsonify({
+        "status": "ok",
+        "service": "python-backend",
+        "environment": os.environ.get("VERCEL_ENV", "development")
+    })
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 #  HELPER: In-memory TTL cache (replaces lru_cache on mutable dicts)

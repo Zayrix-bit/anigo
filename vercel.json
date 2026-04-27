@@ -4,6 +4,14 @@
   "regions": ["sin1"],
   "rewrites": [
     {
+      "source": "/api/health",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/node-health",
+      "destination": "/api/user.js"
+    },
+    {
       "source": "/auth/(.*)",
       "destination": "/api/user.js"
     },

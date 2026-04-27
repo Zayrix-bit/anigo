@@ -5,3 +5,4 @@ beautifulsoup4
 cloudscraper
 httpx
 h2
+pycryptodome

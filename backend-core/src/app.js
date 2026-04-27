@@ -1,5 +1,6 @@
 /* eslint-disable no-undef */
 const express = require('express');
+const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -40,6 +41,15 @@ app.use('/watchlist', watchlistRoutes);
 app.use('/progress', progressRoutes);
 app.use('/settings', settingsRoutes);
 app.use('/notifications', notificationRoutes);
+
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'node-backend',
+    environment: process.env.VERCEL_ENV || 'development',
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+  });
+});
 
 app.get('/', (req, res) => {
   res.send('API running');
